@@ -1,0 +1,193 @@
+[2025-06-05T08:23:22.373Z] HTTP MCP Progress Server running on port 3000
+[2025-06-05T08:23:22.384Z] Available endpoints:
+[2025-06-05T08:23:22.385Z]   POST /add-progress - Add a progress item
+[2025-06-05T08:23:22.385Z]   GET /progress-report - Get formatted progress report
+[2025-06-05T08:23:22.385Z]   POST /progress-report - Process browser extension report
+[2025-06-05T08:23:22.385Z]   GET /health - Health check
+[2025-06-05T08:25:16.945Z] HTTP MCP Progress Server running on port 3000
+[2025-06-05T08:25:16.956Z] Available endpoints:
+[2025-06-05T08:25:16.956Z]   POST /add-progress - Add a progress item
+[2025-06-05T08:25:16.956Z]   GET /progress-report - Get formatted progress report
+[2025-06-05T08:25:16.956Z]   POST /progress-report - Process browser extension report
+[2025-06-05T08:25:16.957Z]   GET /health - Health check
+[2025-06-05T08:25:28.463Z] Saved progress item to Airtable: recBPUJJCPqyQvZg6
+[2025-06-05T09:42:15.292Z] HTTP MCP Progress Server running on port 3000
+[2025-06-05T09:42:15.302Z] Available endpoints:
+[2025-06-05T09:42:15.302Z]   POST /add-progress - Add a progress item
+[2025-06-05T09:42:15.302Z]   GET /progress-report - Get formatted progress report
+[2025-06-05T09:42:15.303Z]   POST /progress-report - Process browser extension report
+[2025-06-05T09:42:15.303Z]   GET /health - Health check
+[2025-06-06T00:55:06.077Z] HTTP MCP Progress Server running on port 8080
+[2025-06-06T00:55:06.081Z] Available endpoints:
+[2025-06-06T00:55:06.081Z]   POST /add-progress - Add a progress item
+[2025-06-06T00:55:06.081Z]   GET /progress-report - Get formatted progress report
+[2025-06-06T00:55:06.081Z]   POST /progress-report - Process browser extension report
+[2025-06-06T00:55:06.082Z]   GET /health - Health check
+[2025-06-06T00:55:57.018Z] HTTP MCP Progress Server running on port 3000
+[2025-06-06T00:55:57.021Z] Available endpoints:
+[2025-06-06T00:55:57.021Z]   POST /add-progress - Add a progress item
+[2025-06-06T00:55:57.021Z]   GET /progress-report - Get formatted progress report
+[2025-06-06T00:55:57.021Z]   POST /progress-report - Process browser extension report
+[2025-06-06T00:55:57.021Z]   GET /health - Health check
+[2025-06-06T01:11:54.313Z] Saved progress item to Airtable: recVsIGSNdBt3yPQI
+[2025-06-06T01:33:06.787Z] HTTP MCP Progress Server running on port 3000
+[2025-06-06T01:33:06.791Z] Available endpoints:
+[2025-06-06T01:33:06.791Z]   POST /add-progress - Add a progress item
+[2025-06-06T01:33:06.791Z]   GET /progress-report - Get formatted progress report
+[2025-06-06T01:33:06.791Z]   POST /progress-report - Process browser extension report
+[2025-06-06T01:33:06.791Z]   GET /health - Health check
+[2025-06-06T01:34:55.438Z] Saved progress item to Airtable: recEkjHe4TEtpKY7t
+[2025-06-06T01:35:28.823Z] Saved progress item to Airtable: recNbvqQveHvT1Gzf
+[2025-06-06T02:01:25.572Z] Saved progress item to Airtable: recIMty4JDd7jgEry
+[2025-06-06T04:03:08.747Z] Saved progress item to Airtable: recgA6nWmM2J38BFA
+[2025-06-11T12:28:50.409Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T12:28:50.412Z] Available endpoints:
+[2025-06-11T12:28:50.413Z]   POST /add-progress - Add a progress item
+[2025-06-11T12:28:50.413Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T12:28:50.413Z]   POST /progress-report - Process browser extension report
+[2025-06-11T12:28:50.413Z]   GET /health - Health check
+[2025-06-11T12:34:20.362Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T12:34:20.365Z] Available endpoints:
+[2025-06-11T12:34:20.365Z]   POST /add-progress - Add a progress item
+[2025-06-11T12:34:20.365Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T12:34:20.365Z]   POST /progress-report - Process browser extension report
+[2025-06-11T12:34:20.365Z]   GET /health - Health check
+[2025-06-11T13:11:21.112Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:11:21.117Z] Available endpoints:
+[2025-06-11T13:11:21.118Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:11:21.118Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:11:21.118Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:11:21.118Z]   GET /health - Health check
+[2025-06-11T13:20:58.223Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:20:58.233Z] Available endpoints:
+[2025-06-11T13:20:58.233Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:20:58.234Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:20:58.235Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:20:58.235Z]   GET /health - Health check
+[2025-06-11T13:22:46.719Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:22:46.722Z] Available endpoints:
+[2025-06-11T13:22:46.722Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:22:46.723Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:22:46.723Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:22:46.723Z]   GET /health - Health check
+[2025-06-11T13:23:25.025Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:23:25.030Z] Available endpoints:
+[2025-06-11T13:23:25.030Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:23:25.030Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:23:25.030Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:23:25.030Z]   GET /health - Health check
+[2025-06-11T13:30:46.509Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:30:46.512Z] Available endpoints:
+[2025-06-11T13:30:46.512Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:30:46.512Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:30:46.512Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:30:46.512Z]   GET /health - Health check
+[2025-06-11T13:33:15.265Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:33:15.269Z] Available endpoints:
+[2025-06-11T13:33:15.269Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:33:15.269Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:33:15.269Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:33:15.270Z]   GET /health - Health check
+[2025-06-11T13:35:13.498Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:35:13.502Z] Available endpoints:
+[2025-06-11T13:35:13.502Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:35:13.502Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:35:13.503Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:35:13.503Z]   GET /health - Health check
+[2025-06-11T13:40:43.913Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T13:40:43.916Z] Available endpoints:
+[2025-06-11T13:40:43.916Z]   POST /add-progress - Add a progress item
+[2025-06-11T13:40:43.916Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T13:40:43.916Z]   POST /progress-report - Process browser extension report
+[2025-06-11T13:40:43.917Z]   GET /health - Health check
+[2025-06-11T14:48:12.072Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T14:48:12.079Z] Available endpoints:
+[2025-06-11T14:48:12.079Z]   POST /add-progress - Add a progress item
+[2025-06-11T14:48:12.079Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T14:48:12.079Z]   POST /progress-report - Process browser extension report
+[2025-06-11T14:48:12.080Z]   GET /health - Health check
+[2025-06-11T15:00:38.569Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T15:00:38.572Z] Available endpoints:
+[2025-06-11T15:00:38.572Z]   POST /add-progress - Add a progress item
+[2025-06-11T15:00:38.572Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T15:00:38.572Z]   POST /progress-report - Process browser extension report
+[2025-06-11T15:00:38.573Z]   GET /health - Health check
+[2025-06-11T15:04:23.702Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T15:04:23.705Z] Available endpoints:
+[2025-06-11T15:04:23.705Z]   POST /add-progress - Add a progress item
+[2025-06-11T15:04:23.705Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T15:04:23.705Z]   POST /progress-report - Process browser extension report
+[2025-06-11T15:04:23.705Z]   GET /health - Health check
+[2025-06-11T15:08:57.177Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T15:08:57.184Z] Available endpoints:
+[2025-06-11T15:08:57.184Z]   POST /add-progress - Add a progress item
+[2025-06-11T15:08:57.184Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T15:08:57.184Z]   POST /progress-report - Process browser extension report
+[2025-06-11T15:08:57.184Z]   GET /health - Health check
+[2025-06-11T15:18:26.160Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T15:18:26.163Z] Available endpoints:
+[2025-06-11T15:18:26.163Z]   POST /add-progress - Add a progress item
+[2025-06-11T15:18:26.163Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T15:18:26.163Z]   POST /progress-report - Process browser extension report
+[2025-06-11T15:18:26.164Z]   GET /health - Health check
+[2025-06-11T15:25:12.602Z] HTTP MCP Progress Server running on port 8080
+[2025-06-11T15:25:12.606Z] Available endpoints:
+[2025-06-11T15:25:12.606Z]   POST /add-progress - Add a progress item
+[2025-06-11T15:25:12.606Z]   GET /progress-report - Get formatted progress report
+[2025-06-11T15:25:12.606Z]   POST /progress-report - Process browser extension report
+[2025-06-11T15:25:12.606Z]   GET /health - Health check
+[2025-06-19T02:32:40.830Z] HTTP MCP Progress Server running on port 8080
+[2025-06-19T02:32:40.832Z] Available endpoints:
+[2025-06-19T02:32:40.832Z]   POST /add-progress - Add a progress item
+[2025-06-19T02:32:40.832Z]   GET /progress-report - Get formatted progress report
+[2025-06-19T02:32:40.832Z]   POST /progress-report - Process browser extension report
+[2025-06-19T02:32:40.832Z]   GET /health - Health check
+[2025-06-19T02:50:48.531Z] HTTP MCP Progress Server running on port 8080
+[2025-06-19T02:50:48.533Z] Available endpoints:
+[2025-06-19T02:50:48.533Z]   POST /add-progress - Add a progress item
+[2025-06-19T02:50:48.533Z]   GET /progress-report - Get formatted progress report
+[2025-06-19T02:50:48.533Z]   POST /progress-report - Process browser extension report
+[2025-06-19T02:50:48.533Z]   GET /health - Health check
+[2025-06-19T02:53:38.149Z] HTTP MCP Progress Server running on port 8080
+[2025-06-19T02:53:38.151Z] Available endpoints:
+[2025-06-19T02:53:38.151Z]   POST /add-progress - Add a progress item
+[2025-06-19T02:53:38.151Z]   GET /progress-report - Get formatted progress report
+[2025-06-19T02:53:38.152Z]   POST /progress-report - Process browser extension report
+[2025-06-19T02:53:38.152Z]   GET /health - Health check
+[2025-06-20T04:39:59.697Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T04:39:59.702Z] Available endpoints:
+[2025-06-20T04:39:59.702Z]   POST /add-progress - Add a progress item
+[2025-06-20T04:39:59.702Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T04:39:59.702Z]   POST /progress-report - Process browser extension report
+[2025-06-20T04:39:59.702Z]   GET /health - Health check
+[2025-06-20T05:19:27.601Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T05:19:27.604Z] Available endpoints:
+[2025-06-20T05:19:27.604Z]   POST /add-progress - Add a progress item
+[2025-06-20T05:19:27.605Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T05:19:27.605Z]   POST /progress-report - Process browser extension report
+[2025-06-20T05:19:27.605Z]   GET /health - Health check
+[2025-06-20T05:21:36.215Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T05:21:36.218Z] Available endpoints:
+[2025-06-20T05:21:36.218Z]   POST /add-progress - Add a progress item
+[2025-06-20T05:21:36.218Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T05:21:36.218Z]   POST /progress-report - Process browser extension report
+[2025-06-20T05:21:36.219Z]   GET /health - Health check
+[2025-06-20T06:49:56.029Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T06:49:56.033Z] Available endpoints:
+[2025-06-20T06:49:56.033Z]   POST /add-progress - Add a progress item
+[2025-06-20T06:49:56.033Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T06:49:56.033Z]   POST /progress-report - Process browser extension report
+[2025-06-20T06:49:56.033Z]   GET /health - Health check
+[2025-06-20T06:50:21.815Z] Saved progress item to Airtable: recri7sxT4nMofVWp
+[2025-06-20T06:51:47.588Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T06:51:47.591Z] Available endpoints:
+[2025-06-20T06:51:47.591Z]   POST /add-progress - Add a progress item
+[2025-06-20T06:51:47.592Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T06:51:47.592Z]   POST /progress-report - Process browser extension report
+[2025-06-20T06:51:47.592Z]   GET /health - Health check
+[2025-06-20T06:55:25.595Z] HTTP MCP Progress Server running on port 8080
+[2025-06-20T06:55:25.599Z] Available endpoints:
+[2025-06-20T06:55:25.599Z]   POST /add-progress - Add a progress item
+[2025-06-20T06:55:25.599Z]   GET /progress-report - Get formatted progress report
+[2025-06-20T06:55:25.599Z]   POST /progress-report - Process browser extension report
+[2025-06-20T06:55:25.599Z]   GET /health - Health check

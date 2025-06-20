@@ -1,0 +1,87 @@
+[2025-06-05T08:00:50.482Z] ===== STARTING ESM SERVER =====
+[2025-06-05T08:00:50.487Z] Node.js version: v23.9.0
+[2025-06-05T08:00:50.487Z] Process ID: 13319
+[2025-06-05T08:00:50.487Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-05T08:00:50.488Z] Environment variables loaded successfully
+[2025-06-05T08:00:50.489Z] Creating MCP server...
+[2025-06-05T08:00:50.492Z] Starting server with stdio transport...
+[2025-06-05T08:00:50.493Z] Server started successfully
+[2025-06-05T08:00:54.776Z] Server shutting down (SIGTERM)
+[2025-06-05T08:11:08.664Z] ===== STARTING ESM SERVER =====
+[2025-06-05T08:11:08.672Z] Node.js version: v23.9.0
+[2025-06-05T08:11:08.673Z] Process ID: 18210
+[2025-06-05T08:11:08.673Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-05T08:11:08.673Z] Environment variables loaded successfully
+[2025-06-05T08:11:08.676Z] Creating MCP server...
+[2025-06-05T08:11:08.681Z] Starting server with stdio transport...
+[2025-06-05T08:11:08.683Z] Server started successfully
+[2025-06-05T08:11:10.390Z] Server shutting down (SIGTERM)
+[2025-06-05T08:23:52.075Z] ===== STARTING ESM SERVER =====
+[2025-06-05T08:23:52.080Z] Node.js version: v23.9.0
+[2025-06-05T08:23:52.081Z] Process ID: 25210
+[2025-06-05T08:23:52.081Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-05T08:23:52.081Z] Environment variables loaded successfully
+[2025-06-05T08:23:52.083Z] Creating MCP server...
+[2025-06-05T08:23:52.087Z] Starting server with stdio transport...
+[2025-06-05T08:23:52.111Z] Server started successfully
+[2025-06-05T08:23:55.713Z] Server shutting down (SIGTERM)
+[2025-06-06T00:50:42.918Z] ===== STARTING ESM SERVER =====
+[2025-06-06T00:50:42.920Z] Node.js version: v23.9.0
+[2025-06-06T00:50:42.920Z] Process ID: 15735
+[2025-06-06T00:50:42.920Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-06T00:50:42.920Z] Environment variables loaded successfully
+[2025-06-06T00:50:42.921Z] Creating MCP server...
+[2025-06-06T00:50:42.921Z] Starting server with stdio transport...
+[2025-06-06T00:50:42.922Z] Server started successfully
+[2025-06-06T00:51:12.923Z] Server heartbeat - still alive
+[2025-06-06T00:51:42.924Z] Server heartbeat - still alive
+[2025-06-06T00:52:12.927Z] Server heartbeat - still alive
+[2025-06-06T00:52:42.931Z] Server heartbeat - still alive
+[2025-06-06T00:53:12.933Z] Server heartbeat - still alive
+[2025-06-06T00:53:21.925Z] Server shutting down (SIGINT)
+[2025-06-06T00:53:41.013Z] ===== STARTING ESM SERVER =====
+[2025-06-06T00:53:41.014Z] Node.js version: v23.9.0
+[2025-06-06T00:53:41.014Z] Process ID: 17310
+[2025-06-06T00:53:41.014Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-06T00:53:41.015Z] Environment variables loaded successfully
+[2025-06-06T00:53:41.015Z] Creating MCP server...
+[2025-06-06T00:53:41.016Z] Starting server with stdio transport...
+[2025-06-06T00:53:41.016Z] Server started successfully
+[2025-06-06T00:54:11.017Z] Server heartbeat - still alive
+[2025-06-06T00:54:41.019Z] Server heartbeat - still alive
+[2025-06-06T00:55:04.381Z] Server shutting down (SIGINT)
+[2025-06-06T01:32:36.633Z] ===== STARTING ESM SERVER =====
+[2025-06-06T01:32:36.636Z] Node.js version: v23.9.0
+[2025-06-06T01:32:36.636Z] Process ID: 37513
+[2025-06-06T01:32:36.636Z] Current directory: /Users/macbook/Code/windows/mcp-progress-extension
+[2025-06-06T01:32:36.636Z] Environment variables loaded successfully
+[2025-06-06T01:32:36.636Z] Creating MCP server...
+[2025-06-06T01:32:36.638Z] Starting server with stdio transport...
+[2025-06-06T01:32:36.638Z] Server started successfully
+[2025-06-19T02:32:40.781Z] ===== STARTING ESM SERVER =====
+[2025-06-19T02:32:40.783Z] Node.js version: v23.9.0
+[2025-06-19T02:32:40.783Z] Process ID: 54520
+[2025-06-19T02:32:40.783Z] Current directory: /Users/macbook/Code/windows/mcp-progression-desktop
+[2025-06-19T02:32:40.783Z] Environment variables loaded successfully
+[2025-06-19T02:32:40.784Z] Creating MCP server...
+[2025-06-19T02:32:40.785Z] Starting server with stdio transport...
+[2025-06-19T02:32:40.785Z] Server started successfully
+[2025-06-19T02:32:44.410Z] Server shutting down (SIGTERM)
+[2025-06-19T02:50:48.466Z] ===== STARTING ESM SERVER =====
+[2025-06-19T02:50:48.468Z] Node.js version: v23.9.0
+[2025-06-19T02:50:48.468Z] Process ID: 63237
+[2025-06-19T02:50:48.468Z] Current directory: /Users/macbook/Code/windows/mcp-progression-desktop
+[2025-06-19T02:50:48.468Z] Environment variables loaded successfully
+[2025-06-19T02:50:48.469Z] Creating MCP server...
+[2025-06-19T02:50:48.470Z] Starting server with stdio transport...
+[2025-06-19T02:50:48.470Z] Server started successfully
+[2025-06-19T02:50:58.527Z] Server shutting down (SIGTERM)
+[2025-06-19T02:53:38.098Z] ===== STARTING ESM SERVER =====
+[2025-06-19T02:53:38.100Z] Node.js version: v23.9.0
+[2025-06-19T02:53:38.100Z] Process ID: 64997
+[2025-06-19T02:53:38.100Z] Current directory: /Users/macbook/Code/windows/mcp-progression-desktop
+[2025-06-19T02:53:38.100Z] Environment variables loaded successfully
+[2025-06-19T02:53:38.101Z] Creating MCP server...
+[2025-06-19T02:53:38.102Z] Starting server with stdio transport...
+[2025-06-19T02:53:38.102Z] Server started successfully
+[2025-06-19T02:53:46.901Z] Server shutting down (SIGTERM)
