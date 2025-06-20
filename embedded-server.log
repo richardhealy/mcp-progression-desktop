@@ -1,5 +1,0 @@
-[2025-06-20T07:05:23.118Z] Embedded MCP Progress Server running on port 8087
-[2025-06-20T07:05:23.123Z] Available endpoints:
-[2025-06-20T07:05:23.123Z]   POST /add-progress - Add a progress item
-[2025-06-20T07:05:23.123Z]   GET /progress-report - Get progress items
-[2025-06-20T07:05:23.123Z]   GET /health - Health check
