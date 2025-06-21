@@ -1,0 +1,35 @@
+{
+  "enabled": true,
+  "workingHours": {
+    "start": "09:00",
+    "end": "17:00",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "timezone": "Europe/Berlin"
+  },
+  "mcpServer": {
+    "url": "http://localhost:8087",
+    "endpoint": "/add-progress"
+  },
+  "projects": [
+    "GGSA",
+    "Nestly",
+    "Seenspire"
+  ],
+  "defaultProject": "GGSA",
+  "paused": false,
+  "lastReportTime": null,
+  "notifications": {
+    "enabled": true,
+    "interval": 3600000
+  },
+  "tracking": {
+    "isPaused": false,
+    "isEnabled": true
+  }
+}

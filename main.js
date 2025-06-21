@@ -4,6 +4,7 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { startEmbeddedServer, stopEmbeddedServer, isServerHealthy } from './embedded-http-server.js';
+import { HybridActivityMonitor } from './activity-monitor.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +16,30 @@ let tray = null;
 let mcpServerProcess = null;
 let httpServerProcess = null;
 let serverStatus = { healthy: false, message: 'Server not started' };
+
+// Activity monitoring
+let activityMonitor = {
+  isMonitoring: false,
+  currentSession: {
+    startTime: null,
+    lastActivity: null,
+    totalActiveTime: 0,
+    isActive: false
+  },
+  dailyStats: {
+    activeTime: 0,
+    idleTime: 0,
+    sessions: [],
+    lastReset: new Date().toDateString()
+  },
+  intervals: {
+    monitor: null,
+    save: null
+  }
+};
+
+// Native activity monitor instance
+let nativeActivityMonitor = null;
 
 // Settings management
 const settingsPath = path.join(__dirname, 'settings.json');
@@ -164,6 +189,15 @@ function createWindow() {
   // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Track window focus for activity monitoring
+  mainWindow.on('focus', () => {
+    simulateActivityDetection();
+  });
+
+  mainWindow.on('blur', () => {
+    // Window lost focus - could indicate user switched to another app
   });
 
   // Handle minimize to tray on macOS
@@ -520,6 +554,165 @@ function setupHourlyNotifications() {
 }
 
 // IPC handlers
+// Activity Monitoring Functions
+function startActivityMonitoring() {
+  if (activityMonitor.isMonitoring) return;
+  
+  console.log('Starting activity monitoring...');
+  activityMonitor.isMonitoring = true;
+  activityMonitor.currentSession.startTime = Date.now();
+  activityMonitor.currentSession.lastActivity = Date.now();
+  
+  // Check if we need to reset daily stats
+  const today = new Date().toDateString();
+  if (activityMonitor.dailyStats.lastReset !== today) {
+    resetDailyStats();
+  }
+  
+  // Monitor activity every 10 seconds
+  activityMonitor.intervals.monitor = setInterval(checkActivity, 10000);
+  
+  // Save stats every minute
+  activityMonitor.intervals.save = setInterval(saveActivityStats, 60000);
+
+  // Simulate periodic activity detection
+  setInterval(simulateActivityDetection, 5000);
+  
+  // Load existing stats
+  loadActivityStats();
+}
+
+function stopActivityMonitoring() {
+  if (!activityMonitor.isMonitoring) return;
+  
+  console.log('Stopping activity monitoring...');
+  activityMonitor.isMonitoring = false;
+  
+  if (activityMonitor.intervals.monitor) {
+    clearInterval(activityMonitor.intervals.monitor);
+    activityMonitor.intervals.monitor = null;
+  }
+  
+  if (activityMonitor.intervals.save) {
+    clearInterval(activityMonitor.intervals.save);
+    activityMonitor.intervals.save = null;
+  }
+  
+  // Save final stats
+  saveActivityStats();
+}
+
+function checkActivity() {
+  const now = Date.now();
+  const idleTime = now - activityMonitor.currentSession.lastActivity;
+  const isIdle = idleTime > 60000; // 1 minute of inactivity = idle
+  
+  if (!isIdle) {
+    // User is active
+    if (!activityMonitor.currentSession.isActive) {
+      // Just became active
+      activityMonitor.currentSession.isActive = true;
+      console.log('User became active');
+    }
+    activityMonitor.currentSession.lastActivity = now;
+  } else {
+    // User is idle
+    if (activityMonitor.currentSession.isActive) {
+      // Just became idle
+      activityMonitor.currentSession.isActive = false;
+      console.log('User became idle');
+    }
+  }
+  
+  // Update daily stats
+  if (activityMonitor.currentSession.isActive) {
+    activityMonitor.dailyStats.activeTime += 10; // 10 seconds
+  } else {
+    activityMonitor.dailyStats.idleTime += 10; // 10 seconds
+  }
+  
+  // Send update to renderer
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('activity-update', {
+      isActive: activityMonitor.currentSession.isActive,
+      sessionTime: now - activityMonitor.currentSession.startTime,
+      dailyActive: activityMonitor.dailyStats.activeTime,
+      dailyIdle: activityMonitor.dailyStats.idleTime
+    });
+  }
+}
+
+function resetDailyStats() {
+  const today = new Date().toDateString();
+  console.log('Resetting daily stats for:', today);
+  
+  activityMonitor.dailyStats = {
+    activeTime: 0,
+    idleTime: 0,
+    sessions: [],
+    lastReset: today
+  };
+}
+
+function saveActivityStats() {
+  const statsPath = path.join(__dirname, 'activity-stats.json');
+  try {
+    const stats = {
+      dailyStats: activityMonitor.dailyStats,
+      lastUpdated: new Date().toISOString()
+    };
+    fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+  } catch (error) {
+    console.error('Error saving activity stats:', error);
+  }
+}
+
+function loadActivityStats() {
+  const statsPath = path.join(__dirname, 'activity-stats.json');
+  try {
+    if (fs.existsSync(statsPath)) {
+      const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
+      
+      // Only load if it's from today
+      const today = new Date().toDateString();
+      if (stats.dailyStats && stats.dailyStats.lastReset === today) {
+        activityMonitor.dailyStats = stats.dailyStats;
+        console.log('Loaded activity stats from file');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading activity stats:', error);
+  }
+}
+
+function getActivityStats() {
+  const now = Date.now();
+  const sessionTime = activityMonitor.currentSession.startTime ? 
+    now - activityMonitor.currentSession.startTime : 0;
+  
+  return {
+    isMonitoring: activityMonitor.isMonitoring,
+    isActive: activityMonitor.currentSession.isActive,
+    sessionTime: sessionTime,
+    dailyActive: activityMonitor.dailyStats.activeTime * 1000, // Convert to milliseconds
+    dailyIdle: activityMonitor.dailyStats.idleTime * 1000,
+    totalTime: (activityMonitor.dailyStats.activeTime + activityMonitor.dailyStats.idleTime) * 1000
+  };
+}
+
+// Simulate user activity detection (since real system monitoring requires native modules)
+function simulateActivityDetection() {
+  // This is a simplified version - in a real implementation, you'd use:
+  // - Mouse movement detection
+  // - Keyboard input detection
+  // - Screen interaction monitoring
+  
+  // For now, we'll simulate activity based on window focus and basic events
+  if (mainWindow && mainWindow.isFocused()) {
+    activityMonitor.currentSession.lastActivity = Date.now();
+  }
+}
+
 function setupIpcHandlers() {
   ipcMain.handle('get-settings', () => {
     console.log('Returning settings:', settings);
@@ -689,6 +882,108 @@ function setupIpcHandlers() {
       return { success: false, error: error.message };
     }
   });
+
+  // Activity monitoring handlers
+  ipcMain.handle('start-activity-monitoring', () => {
+    startActivityMonitoring();
+    return { success: true };
+  });
+
+  ipcMain.handle('stop-activity-monitoring', () => {
+    stopActivityMonitoring();
+    return { success: true };
+  });
+
+  ipcMain.handle('get-activity-stats', () => {
+    return getActivityStats();
+  });
+
+  ipcMain.handle('reset-activity-stats', () => {
+    resetDailyStats();
+    return { success: true };
+  });
+
+  // Native activity monitoring handlers
+  ipcMain.handle('get-native-activity-stats', async () => {
+    try {
+      if (!nativeActivityMonitor) {
+        return {
+          error: 'Native activity monitor not initialized',
+          permissions: {
+            hasPermissions: false,
+            fallbackMode: true,
+            message: 'Using fallback activity tracking. Native libraries not available.'
+          }
+        };
+      }
+
+      const permissions = await nativeActivityMonitor.checkPermissions();
+      const stats = nativeActivityMonitor.getStats();
+      
+      return {
+        isMonitoring: nativeActivityMonitor.isActive,
+        lastActivity: nativeActivityMonitor.lastActivity,
+        stats: stats,
+        permissions: {
+          hasPermissions: permissions.overall !== 'none',
+          fallbackMode: permissions.overall === 'none',
+          message: permissions.overall === 'none' 
+            ? 'System permissions required for advanced activity tracking'
+            : `Active with ${permissions.overall} permissions`,
+          details: permissions
+        }
+      };
+    } catch (error) {
+      console.error('Error getting native activity stats:', error);
+      return {
+        error: error.message,
+        permissions: {
+          hasPermissions: false,
+          fallbackMode: true,
+          message: 'Error accessing native activity tracking'
+        }
+      };
+    }
+  });
+
+  ipcMain.handle('test-native-activity', async () => {
+    try {
+      if (!nativeActivityMonitor) {
+        return { success: false, message: 'Native activity monitor not initialized' };
+      }
+
+      const permissions = await nativeActivityMonitor.checkPermissions();
+      if (permissions.overall === 'none') {
+        return { 
+          success: false, 
+          message: 'No native libraries have permissions. Using fallback mode.' 
+        };
+      }
+
+      // Simulate activity detection
+      nativeActivityMonitor.simulateActivity();
+      return { 
+        success: true, 
+        message: `Activity test successful. Libraries available: ${JSON.stringify(permissions)}` 
+      };
+    } catch (error) {
+      console.error('Error testing native activity:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('reset-native-activity-stats', () => {
+    try {
+      if (nativeActivityMonitor) {
+        nativeActivityMonitor.resetStats();
+        return { success: true, message: 'Native activity stats reset successfully' };
+      }
+      return { success: false, message: 'Native activity monitor not initialized' };
+    } catch (error) {
+      console.error('Error resetting native activity stats:', error);
+      return { success: false, message: error.message };
+    }
+  });
 }
 
 // Copy .env file to userData directory for packaged app
@@ -720,7 +1015,7 @@ function ensureEnvFile() {
 }
 
 // App event handlers
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   loadSettings();
   ensureEnvFile(); // Ensure .env file is available
   createWindow();
@@ -741,6 +1036,64 @@ app.whenReady().then(() => {
 
   // Set up hourly notifications
   setupHourlyNotifications();
+
+  // Start activity monitoring
+  startActivityMonitoring();
+
+  // Initialize native activity monitor
+  try {
+    console.log('Initializing native activity monitor...');
+    nativeActivityMonitor = new HybridActivityMonitor({
+      idleThreshold: 60000, // 1 minute
+      checkInterval: 5000,  // 5 seconds
+      trackMouse: true,
+      trackKeyboard: true
+    });
+
+    // Set up event listeners
+    nativeActivityMonitor.on('activity-changed', (data) => {
+      console.log('Native activity changed:', data);
+      if (mainWindow && mainWindow.webContents) {
+        // Send both the native activity event and the activity status change
+        mainWindow.webContents.send('native-activity-changed', data);
+        mainWindow.webContents.send('activity-status-changed', data);
+      }
+    });
+
+    nativeActivityMonitor.on('libraries-loaded', (libraries) => {
+      console.log('Native activity libraries loaded:', libraries);
+    });
+
+    nativeActivityMonitor.on('error', (error) => {
+      console.error('Native activity monitor error:', error);
+    });
+
+    // Listen for mouse, keyboard, and window activity for real-time updates
+    nativeActivityMonitor.on('mouse-activity', (data) => {
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('native-activity', { type: 'mouse', ...data });
+      }
+    });
+
+    nativeActivityMonitor.on('keyboard-activity', (data) => {
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('native-activity', { type: 'keyboard', ...data });
+      }
+    });
+
+    nativeActivityMonitor.on('window-changed', (data) => {
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('native-activity', { type: 'window', ...data });
+      }
+    });
+
+    // Start the native monitor
+    await nativeActivityMonitor.start();
+    console.log('Native activity monitor started successfully');
+  } catch (error) {
+    console.error('Failed to initialize native activity monitor:', error);
+    console.log('Continuing with basic activity monitoring only');
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -767,6 +1120,13 @@ app.on('before-quit', async () => {
     console.log('Destroying tray icon');
     tray.destroy();
     tray = null;
+  }
+  
+  // Clean up native activity monitor
+  if (nativeActivityMonitor) {
+    console.log('Stopping native activity monitor...');
+    nativeActivityMonitor.stop();
+    nativeActivityMonitor = null;
   }
   
   // Clean up server processes

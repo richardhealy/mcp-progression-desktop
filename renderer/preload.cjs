@@ -23,6 +23,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Server status
   getServerStatus: () => ipcRenderer.invoke('get-server-status'),
+  
+  // Activity monitoring
+  startActivityMonitoring: () => ipcRenderer.invoke('start-activity-monitoring'),
+  stopActivityMonitoring: () => ipcRenderer.invoke('stop-activity-monitoring'),
+  getActivityStats: () => ipcRenderer.invoke('get-activity-stats'),
+  resetActivityStats: () => ipcRenderer.invoke('reset-activity-stats'),
+  
+  // Native activity monitoring
+  testNativeActivity: () => ipcRenderer.invoke('test-native-activity'),
+  getNativeActivityStats: () => ipcRenderer.invoke('get-native-activity-stats'),
+  resetNativeActivityStats: () => ipcRenderer.invoke('reset-native-activity-stats'),
     
     // Event listeners
     onTrackingStatusChanged: (callback) => {
@@ -43,6 +54,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onServerStatus: (callback) => {
         ipcRenderer.on('server-status', callback);
         return () => ipcRenderer.removeListener('server-status', callback);
+    },
+    
+    onActivityUpdate: (callback) => {
+        ipcRenderer.on('activity-update', callback);
+        return () => ipcRenderer.removeListener('activity-update', callback);
+    },
+    
+    onNativeActivity: (callback) => {
+        ipcRenderer.on('native-activity', callback);
+        return () => ipcRenderer.removeListener('native-activity', callback);
+    },
+    
+    onActivityStatusChanged: (callback) => {
+        ipcRenderer.on('activity-status-changed', callback);
+        return () => ipcRenderer.removeListener('activity-status-changed', callback);
     },
     
     // Platform detection

@@ -144,6 +144,16 @@
       box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.2);
     }
 
+    .status-dot.idle {
+      background: #fbbf24;
+      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
+    }
+
+    .status-dot.inactive {
+      background: var(--text-muted);
+      box-shadow: 0 0 0 2px rgba(110, 118, 129, 0.2);
+    }
+
     .status-dot.paused {
       background: var(--accent-purple);
       box-shadow: 0 0 0 2px rgba(137, 87, 229, 0.2);
@@ -184,6 +194,36 @@
       background: var(--accent-blue);
       color: #ffffff;
       border-color: var(--accent-blue);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: currentColor;
+      animation: spin 0.8s ease-in-out infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn.loading .spinner {
+      display: inline-block;
+    }
+
+    .btn:not(.loading) .spinner {
+      display: none;
     }
 
     /* Main Content */
@@ -1201,15 +1241,587 @@
       opacity: 0.2;
       mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'/%3E%3C/svg%3E") center/contain;
     }
+
+    /* AI Planner Styles */
+    .planner-input-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .generated-plan-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .plan-summary {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    .generated-tasks {
+      margin-bottom: 20px;
+    }
+
+    .task-day {
+      margin-bottom: 20px;
+    }
+
+    .task-day-header {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent-blue);
+    }
+
+    .task-item {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: all 0.2s;
+    }
+
+    .task-item:hover {
+      border-color: var(--border-default);
+      background: var(--bg-hover);
+    }
+
+    .task-content {
+      flex: 1;
+    }
+
+    .task-title {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .task-details {
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .task-hours {
+      background: var(--accent-blue);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .task-time {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .plan-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-muted);
+    }
+
+    .section-description {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* End of Day Modal Styles */
+    .end-of-day-content {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .today-todos {
+      margin-bottom: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border-muted);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+    }
+
+    .todo-review-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-muted);
+      transition: all 0.2s;
+    }
+
+    .todo-review-item:last-child {
+      border-bottom: none;
+    }
+
+    .todo-review-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .todo-review-item.selected {
+      background: rgba(31, 111, 235, 0.1);
+      border-left: 3px solid var(--accent-blue);
+    }
+
+    .todo-checkbox {
+      margin-right: 12px;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .todo-review-content {
+      flex: 1;
+    }
+
+    .todo-review-title {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .todo-review-details {
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .todo-review-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .todo-hours-badge {
+      background: var(--accent-blue);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .todo-time-badge {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .bulk-actions {
+      border-top: 1px solid var(--border-muted);
+      padding-top: 16px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .submit-section {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal-description {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .empty-todos {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-todos::before {
+      content: '📋';
+      display: block;
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Activity Monitor Styles */
+    .activity-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .native-tracking-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .keypress-counter-display {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .counter-main {
+      text-align: center;
+      padding: 32px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius-large);
+    }
+
+    .counter-label {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .counter-value {
+      font-size: 64px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .counter-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .counter-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 20px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .activity-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .activity-card:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-default);
+    }
+
+    .activity-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .activity-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .activity-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .activity-controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .activity-monitor {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .monitor-display {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .current-session {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-muted);
+    }
+
+    .session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .session-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .session-time {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .session-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .activity-chart {
+      min-height: 200px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chart-placeholder {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .activity-breakdown {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .activity-breakdown h4 {
+      margin: 0 0 16px 0;
+      color: var(--text-primary);
+      font-size: 16px;
+    }
+
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-muted);
+    }
+
+    .breakdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .breakdown-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .breakdown-value {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .insight-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .insight-card h4 {
+      margin: 0 0 12px 0;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .insight-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-bottom: 4px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
+    .insight-detail {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .activity-log-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .log-filters {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border-muted);
+      background: var(--bg-tertiary);
+    }
+
+    .activity-log {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      display: grid;
+      grid-template-columns: 120px 100px 1fr 80px;
+      gap: 16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-muted);
+      align-items: center;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-entry:hover {
+      background: var(--bg-hover);
+    }
+
+    .log-time {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .log-type {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .log-type.active {
+      color: var(--accent-green);
+    }
+
+    .log-type.idle {
+      color: var(--text-muted);
+    }
+
+    .log-type.focus {
+      color: var(--accent-blue);
+    }
+
+    .log-description {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .log-duration {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: right;
+    }
+
+    @media (max-width: 768px) {
+      .activity-monitor {
+        grid-template-columns: 1fr;
+      }
+      
+      .log-entry {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- App Header -->
   <div class="app-header">
     <div class="header-left">
-      <h1 class="app-title">
-        ⏰ MCP Progress Tracker
-      </h1>
+    <h1 class="app-title">
+      ⏰ MCP Progress Tracker
+    </h1>
       <div class="current-time-display">
         <div class="current-time" id="currentTime">Loading...</div>
         <div class="current-timezone" id="currentTimezone">UTC</div>
@@ -1234,7 +1846,9 @@
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="todos">📋 To-Dos</button>
     <button class="nav-tab" data-tab="progress">📊 Progress</button>
-    <button class="nav-tab" data-tab="logs">🔍 Logs</button>
+        <button class="nav-tab" data-tab="planner">🤖 AI Planner</button>
+        <button class="nav-tab" data-tab="activity">📈 Activity Monitor</button>
+        <button class="nav-tab" data-tab="logs">🔍 Logs</button>
   </div>
 
   <!-- Main Content -->
@@ -1321,7 +1935,7 @@
           View and manage all your progress items stored in Airtable.
         </p>
         <div class="progress-controls">
-          <button class="btn secondary" id="refreshProgress">🔄 Refresh</button>
+          <button class="btn secondary" id="refreshProgress"><span class="spinner"></span>🔄 Refresh</button>
           <select id="progressDateFilter" class="date-filter">
             <option value="today">Today</option>
             <option value="week" selected>This Week</option>
@@ -1379,12 +1993,289 @@
           Submit a progress report immediately, outside of your regular hourly schedule.
         </p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn" id="triggerReport">Submit Current Progress</button>
-          <button class="btn secondary" id="pauseTracking">Pause/Resume Tracking</button>
+          <button class="btn" id="triggerReport"><span class="spinner"></span>Submit Current Progress</button>
+          <button class="btn secondary" id="pauseTracking"><span class="spinner"></span>Pause/Resume Tracking</button>
         </div>
         <div class="status-message" id="submitStatus"></div>
         <div class="status-message" id="controlStatus"></div>
       </div>
+    </div>
+
+    <!-- AI Planner Tab -->
+    <div class="tab-content" id="planner-tab">
+      <div class="content-section">
+        <h2>🤖 AI Weekly Planner</h2>
+        <p class="section-description">
+          Describe your weekly goals for a project, and AI will generate realistic progress points that you can add to your todo list.
+        </p>
+
+        <!-- Planning Input -->
+        <div class="planner-input-section">
+          <div class="form-group">
+            <label for="plannerProject">Project:</label>
+            <select id="plannerProject">
+              <option value="">Select a project...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="plannerGoals">Weekly Goals & Context:</label>
+            <textarea id="plannerGoals" rows="6" placeholder="Describe what you want to accomplish this week for this project. Be as detailed as possible about your goals, current status, challenges, and priorities. For example:
+
+'This week I want to focus on the user authentication system. I need to implement login/logout functionality, password reset, and user profile management. Currently, I have the basic user model set up but need to add JWT tokens and email verification. The main challenges are integrating with the email service and ensuring security best practices.'"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="plannerWorkPattern">Work Pattern:</label>
+            <select id="plannerWorkPattern">
+              <option value="6.5">6.5 hours/day (part-time)</option>
+              <option value="8" selected>8 hours/day (full-time)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="plannerDays">Working Days:</label>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerMon" checked>
+                <label for="plannerMon">Monday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerTue" checked>
+                <label for="plannerTue">Tuesday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerWed" checked>
+                <label for="plannerWed">Wednesday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerThu" checked>
+                <label for="plannerThu">Thursday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerFri" checked>
+                <label for="plannerFri">Friday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerSat">
+                <label for="plannerSat">Saturday</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="plannerSun">
+                <label for="plannerSun">Sunday</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button class="btn" id="generatePlan"><span class="spinner"></span>🤖 Generate Weekly Plan</button>
+          </div>
+          <div class="status-message" id="plannerStatus"></div>
+        </div>
+
+        <!-- Generated Plan Display -->
+        <div class="generated-plan-section" id="generatedPlanSection" style="display: none;">
+          <h3>Generated Weekly Plan</h3>
+          <div class="plan-summary" id="planSummary"></div>
+          <div class="generated-tasks" id="generatedTasks"></div>
+          <div class="plan-actions">
+            <button class="btn" id="addAllTodos"><span class="spinner"></span>Add All to Todo List</button>
+            <button class="btn secondary" id="regeneratePlan"><span class="spinner"></span>Regenerate Plan</button>
+            <button class="btn secondary" id="clearPlan">Clear Plan</button>
+          </div>
+          <div class="status-message" id="planActionsStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Monitor Tab -->
+    <div class="tab-content" id="activityTab">
+      <!-- Weekly Insights - Moved to Top -->
+      <div class="section">
+        <h3 style="color: var(--text-primary);">📊 Weekly Insights</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          Key productivity metrics and trends based on your activity patterns.
+        </p>
+        <div class="insights-grid">
+          <div class="insight-card">
+            <h4>🏆 Most Productive Day</h4>
+            <div class="insight-value" id="mostProductiveDay">Today</div>
+            <div class="insight-detail" id="mostProductiveDetails">Loading...</div>
+          </div>
+          <div class="insight-card">
+            <h4>⏰ Peak Hours</h4>
+            <div class="insight-value" id="peakHours">Current Hour</div>
+            <div class="insight-detail" id="peakHoursDetails">Most active period</div>
+          </div>
+          <div class="insight-card">
+            <h4>📈 Today's Progress</h4>
+            <div class="insight-value" id="weeklyTrend">0h 0m</div>
+            <div class="insight-detail" id="weeklyTrendDetails">Active time today</div>
+          </div>
+          <div class="insight-card">
+            <h4>🎯 Efficiency</h4>
+            <div class="insight-value" id="weeklyAccuracy">0%</div>
+            <div class="insight-detail" id="weeklyAccuracyDetails">Logged vs. active</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Overview -->
+      <div class="section">
+        <h3 style="color: var(--text-primary);">📈 Activity Overview</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          Monitor your actual computer activity vs. logged work time to improve productivity insights.
+        </p>
+        
+        <div class="activity-summary-grid">
+          <div class="activity-card">
+            <div class="activity-label">Today's Activity</div>
+            <div class="activity-value" id="todayActiveTime">0h 0m</div>
+            <div class="activity-subtitle">Active time detected</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Logged Work</div>
+            <div class="activity-value" id="todayLoggedTime">0h 0m</div>
+            <div class="activity-subtitle">Time you reported</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Efficiency</div>
+            <div class="activity-value" id="todayEfficiency">0%</div>
+            <div class="activity-subtitle">Logged vs. Active</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Status</div>
+            <div class="activity-value" id="activityStatus">Monitoring</div>
+            <div class="activity-subtitle">Current state</div>
+          </div>
+        </div>
+
+        <div class="activity-controls">
+          <button class="btn secondary" id="refreshActivity"><span class="spinner"></span>🔄 Refresh</button>
+          <button class="btn secondary" id="exportActivity"><span class="spinner"></span>📊 Export Data</button>
+          <button class="btn secondary" id="activitySettings"><span class="spinner"></span>⚙️ Settings</button>
+        </div>
+      </div>
+
+      <!-- Native System Tracking Section -->
+      <div class="section">
+        <h3 style="color: var(--text-primary);">🖱️ Native System Tracking</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          Enhanced tracking using system-wide mouse, keyboard, and window monitoring
+        </p>
+        
+        <div class="native-tracking-grid">
+          <div class="activity-card">
+            <div class="activity-label">Native Tracking</div>
+            <div class="activity-value" id="nativeTrackingStatus">Checking...</div>
+            <div class="activity-subtitle">Full system monitoring</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Mouse Movements</div>
+            <div class="activity-value" id="mouseMovements">0</div>
+            <div class="activity-subtitle">Detected movements</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Window Switches</div>
+            <div class="activity-value" id="windowSwitches">0</div>
+            <div class="activity-subtitle">App changes detected</div>
+          </div>
+          <div class="activity-card">
+            <div class="activity-label">Last Activity</div>
+            <div class="activity-value" id="lastNativeActivity">Never</div>
+            <div class="activity-subtitle">Native detection</div>
+          </div>
+        </div>
+
+        <div class="activity-controls">
+          <button class="btn secondary" id="testNativeActivity"><span class="spinner"></span>🧪 Test Native Activity</button>
+          <button class="btn secondary" id="resetNativeStats"><span class="spinner"></span>🔄 Reset Native Stats</button>
+          <button class="btn secondary" id="refreshNativeStats"><span class="spinner"></span>📊 Refresh Stats</button>
+        </div>
+      </div>
+
+      <!-- Keypress Counter Section -->
+      <div class="section">
+        <h3 style="color: var(--text-primary);">⌨️ Keypress Counter</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          Track your keyboard activity and typing patterns throughout the day
+        </p>
+        
+        <div class="keypress-counter-display">
+          <div class="counter-main">
+            <div class="counter-label">Total Keypresses Today</div>
+            <div class="counter-value" id="totalKeypresses">0</div>
+            <div class="counter-subtitle">Keys pressed since start</div>
+          </div>
+          
+          <div class="counter-stats">
+            <div class="stat-item">
+              <div class="stat-label">Keys/Minute</div>
+              <div class="stat-value" id="keysPerMinute">0</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Last Keypress</div>
+              <div class="stat-value" id="lastKeypress">Never</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Peak Rate</div>
+              <div class="stat-value" id="peakKeysPerMinute">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="activity-controls">
+          <button class="btn secondary" id="resetKeypressStats"><span class="spinner"></span>🔄 Reset Counter</button>
+          <button class="btn secondary" id="refreshKeypressStats"><span class="spinner"></span>📊 Refresh Stats</button>
+        </div>
+      </div>
+
+      <!-- Real-time Activity Monitor -->
+      <div class="section">
+        <h3 style="color: var(--text-primary);">⏱️ Real-time Monitor</h3>
+        <div class="activity-monitor">
+          <div class="monitor-display">
+            <div class="current-session">
+              <div class="session-info">
+                <span class="session-label">Current Session:</span>
+                <span class="session-time" id="currentSessionTime">0h 0m</span>
+              </div>
+              <div class="session-status">
+                <span class="status-dot" id="activityStatusDot"></span>
+                <span id="activityStatusText">Idle</span>
+              </div>
+            </div>
+            <div class="activity-chart" id="activityChart">
+              <!-- Activity visualization will be rendered here -->
+              <div class="chart-placeholder">
+                📊 Activity chart will appear here
+              </div>
+            </div>
+          </div>
+          
+          <div class="activity-breakdown">
+            <h4>Today's Breakdown</h4>
+            <div class="breakdown-item">
+              <span class="breakdown-label">🟢 Active periods</span>
+              <span class="breakdown-value" id="activePeriods">0</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">⏸️ Idle periods</span>
+              <span class="breakdown-value" id="idlePeriods">0</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">🎯 Focus sessions</span>
+              <span class="breakdown-value" id="focusSessions">0</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">⚡ Peak activity</span>
+              <span class="breakdown-value" id="peakActivity">--:--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
     </div>
 
     <!-- Logs Tab -->
@@ -1416,9 +2307,9 @@
         </div>
 
         <div class="diagnostic-actions">
-          <button class="btn secondary" id="testServerHealth">🏥 Test Server Health</button>
-          <button class="btn secondary" id="testAirtableConnection">🗄️ Test Airtable</button>
-          <button class="btn secondary" id="refreshDiagnostics">🔄 Refresh</button>
+          <button class="btn secondary" id="testServerHealth"><span class="spinner"></span>🏥 Test Server Health</button>
+          <button class="btn secondary" id="testAirtableConnection"><span class="spinner"></span>🗄️ Test Airtable</button>
+          <button class="btn secondary" id="refreshDiagnostics"><span class="spinner"></span>🔄 Refresh</button>
         </div>
       </div>
 
@@ -1531,8 +2422,8 @@
           <input type="text" id="mcpEndpoint" placeholder="/add-progress">
         </div>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn secondary" id="testConnection">Test Connection</button>
-          <button class="btn secondary" id="testNotification">Test Notification</button>
+                  <button class="btn secondary" id="testConnection"><span class="spinner"></span>Test Connection</button>
+        <button class="btn secondary" id="testNotification"><span class="spinner"></span>Test Notification</button>
         </div>
         <div class="status-message" id="connectionStatus"></div>
       </div>
@@ -1556,9 +2447,41 @@
       <div class="section">
         <h3 style="color: var(--text-primary);">🔧 Controls</h3>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn" id="saveSettings">Save Settings</button>
+          <button class="btn" id="saveSettings"><span class="spinner"></span>Save Settings</button>
+          <button class="btn secondary" id="testEndOfDay"><span class="spinner"></span>Test End of Day</button>
         </div>
         <div class="status-message" id="settingsStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- End of Day Todo Popup -->
+  <div id="endOfDayModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeEndOfDayModal">&times;</span>
+      <h2>📋 End of Day Review</h2>
+      <p class="modal-description">
+        Select the todos you completed today to add them as progress items:
+      </p>
+      
+      <div class="end-of-day-content">
+        <div class="today-todos" id="todayTodosList">
+          <!-- Today's todos will be populated here -->
+        </div>
+        
+        <div class="bulk-actions">
+          <div class="action-buttons">
+            <button class="btn secondary" id="selectAllTodos">Select All</button>
+            <button class="btn secondary" id="selectNoneTodos">Select None</button>
+          </div>
+          
+          <div class="submit-section">
+            <button class="btn" id="submitSelectedTodos"><span class="spinner"></span>Submit Selected Progress</button>
+            <button class="btn secondary" id="skipEndOfDay">Skip for Today</button>
+          </div>
+        </div>
+        
+        <div class="status-message" id="endOfDayStatus"></div>
       </div>
     </div>
   </div>
@@ -1578,11 +2501,15 @@
           <input type="number" id="modalHours" class="hours-input" min="0" max="24" step="0.25" value="1">
         </div>
         <div class="form-group">
+          <label for="modalTime">Time completed:</label>
+          <input type="time" id="modalTime" required>
+        </div>
+        <div class="form-group">
           <label for="modalDescription">What did you accomplish?</label>
           <textarea id="modalDescription" placeholder="Describe your progress..." required></textarea>
         </div>
         <div class="form-group">
-          <button type="submit" class="btn">Submit Progress</button>
+                      <button type="submit" class="btn" id="submitProgressBtn"><span class="spinner"></span>Submit Progress</button>
           <button type="button" class="btn secondary" id="skipReport">Skip This Hour</button>
         </div>
         <div class="status-message" id="modalStatus"></div>
@@ -1612,14 +2539,18 @@
           <label for="editDescription">Description:</label>
           <textarea id="editDescription" rows="4" required></textarea>
         </div>
-        <div class="form-group">
-          <label for="editDate">Date:</label>
-          <input type="date" id="editDate" required>
+                  <div class="form-group">
+            <label for="editDate">Date:</label>
+            <input type="date" id="editDate" required>
+          </div>
+          <div class="form-group">
+            <label for="editTime">Time:</label>
+            <input type="time" id="editTime" required>
         </div>
         <div class="form-group">
-          <button type="submit" class="btn">Save Changes</button>
-          <button type="button" class="btn secondary" id="cancelEdit">Cancel</button>
-          <button type="button" class="btn danger" id="deleteProgress">Delete Item</button>
+                      <button type="submit" class="btn" id="saveProgressChangesBtn"><span class="spinner"></span>Save Changes</button>
+            <button type="button" class="btn secondary" id="cancelEdit">Cancel</button>
+            <button type="button" class="btn danger" id="deleteProgress"><span class="spinner"></span>Delete Item</button>
         </div>
         <div class="status-message" id="editModalStatus"></div>
       </form>

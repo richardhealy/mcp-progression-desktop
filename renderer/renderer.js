@@ -5,6 +5,19 @@ class DesktopProgressController {
         this.settings = null;
         this.todos = [];
         this.logs = [];
+        this.endOfDayShownToday = null;
+        this.activityStats = {
+            isMonitoring: false,
+            isActive: false,
+            sessionTime: 0,
+            dailyActive: 0,
+            dailyIdle: 0,
+            totalTime: 0
+        };
+        this.lastActivityTime = Date.now();
+        this.activityState = 'active'; // active, idle, inactive
+        this.activitySessionStart = Date.now(); // Track when current activity session started
+        this.uiReady = false; // Track if UI is fully initialized
         this.init();
     }
 
@@ -13,20 +26,20 @@ class DesktopProgressController {
             console.log('Initializing controller...');
             
             console.log('Loading settings...');
-            await this.loadSettings();
+        await this.loadSettings();
             
             console.log('Loading todos...');
-            await this.loadTodos();
+        await this.loadTodos();
             
             console.log('Setting up event listeners...');
-            this.setupEventListeners();
+        this.setupEventListeners();
             
             console.log('Setting up IPC listeners...');
-            this.setupIPCListeners();
+        this.setupIPCListeners();
             
             console.log('Updating UI...');
-            this.updateUI();
-            this.updateTodoUI();
+        this.updateUI();
+        this.updateTodoUI();
             
             console.log('Initializing date controls...');
             this.initializeDateControls();
@@ -34,10 +47,15 @@ class DesktopProgressController {
             console.log('Starting clock updates...');
             this.startClockUpdates();
             
+            console.log('Starting activity state updates...');
+            this.startActivityStateUpdates();
+            
             console.log('Loading server status...');
             await this.loadServerStatus();
             
-            console.log('Controller initialization complete');
+            // Mark UI as ready
+            this.uiReady = true;
+            console.log('🎉 Controller initialization complete - UI ready for updates');
         } catch (error) {
             console.error('Error during controller initialization:', error);
             throw error;
@@ -155,6 +173,10 @@ class DesktopProgressController {
 
         document.getElementById('testNotification').addEventListener('click', () => {
             this.testNotification();
+        });
+
+        document.getElementById('testEndOfDay').addEventListener('click', () => {
+            this.testEndOfDay();
         });
 
         document.getElementById('triggerReport').addEventListener('click', () => {
@@ -300,6 +322,87 @@ class DesktopProgressController {
                 this.hideEditModal();
             }
         });
+
+        // AI Planner event listeners
+        document.getElementById('generatePlan').addEventListener('click', () => {
+            this.generateWeeklyPlan();
+        });
+
+        document.getElementById('addAllTodos').addEventListener('click', () => {
+            this.addAllGeneratedTodos();
+        });
+
+        document.getElementById('regeneratePlan').addEventListener('click', () => {
+            this.generateWeeklyPlan();
+        });
+
+        document.getElementById('clearPlan').addEventListener('click', () => {
+            this.clearGeneratedPlan();
+        });
+
+        // End of Day Modal event listeners
+        document.getElementById('closeEndOfDayModal').addEventListener('click', () => {
+            this.hideEndOfDayModal();
+        });
+
+        document.getElementById('selectAllTodos').addEventListener('click', () => {
+            this.selectAllTodayTodos();
+        });
+
+        document.getElementById('selectNoneTodos').addEventListener('click', () => {
+            this.selectNoneTodayTodos();
+        });
+
+        document.getElementById('submitSelectedTodos').addEventListener('click', () => {
+            this.submitSelectedTodos();
+        });
+
+        document.getElementById('skipEndOfDay').addEventListener('click', () => {
+            this.skipEndOfDayReview();
+        });
+
+        // Close end of day modal when clicking outside
+        document.getElementById('endOfDayModal').addEventListener('click', (e) => {
+            if (e.target.id === 'endOfDayModal') {
+                this.hideEndOfDayModal();
+            }
+        });
+
+        // Activity Monitor event listeners
+        document.getElementById('refreshActivity').addEventListener('click', () => {
+            this.refreshActivityStats();
+        });
+
+        document.getElementById('exportActivity').addEventListener('click', () => {
+            this.exportActivityData();
+        });
+
+        document.getElementById('activitySettings').addEventListener('click', () => {
+            this.showActivitySettings();
+        });
+
+
+
+        // Native activity monitoring event listeners
+        document.getElementById('testNativeActivity')?.addEventListener('click', () => {
+            this.testNativeActivity();
+        });
+
+        document.getElementById('resetNativeStats')?.addEventListener('click', () => {
+            this.resetNativeStats();
+        });
+
+        document.getElementById('refreshNativeStats')?.addEventListener('click', () => {
+            this.refreshNativeStats();
+        });
+
+        document.getElementById('resetKeypressStats')?.addEventListener('click', () => {
+            this.resetKeypressStats();
+        });
+
+        document.getElementById('refreshKeypressStats')?.addEventListener('click', () => {
+            this.refreshKeypressStats();
+        });
     }
 
     setupIPCListeners() {
@@ -326,6 +429,28 @@ class DesktopProgressController {
         window.electronAPI.onServerStatus((event, serverStatus) => {
             this.updateServerStatus(serverStatus);
         });
+
+        // Listen for activity updates
+        window.electronAPI.onActivityUpdate((event, activityData) => {
+            this.updateActivityStats(activityData);
+        });
+
+        // Listen for native activity events
+        window.electronAPI.onNativeActivity((event, data) => {
+            console.log('✅ Native activity detected in renderer:', data);
+            this.updateNativeActivityDisplay(data);
+            
+            // Update activity overview stats when native activity is detected
+            this.updateActivityOverviewFromNativeActivity(data);
+        });
+
+        window.electronAPI.onActivityStatusChanged((event, data) => {
+            console.log('✅ Activity status changed in renderer:', data);
+            this.updateActivityStatusDisplay(data);
+            
+            // Update activity overview when status changes
+            this.updateActivityOverviewFromStatusChange(data);
+        });
     }
 
     switchTab(tabName) {
@@ -335,7 +460,24 @@ class DesktopProgressController {
 
         // Add active class to clicked tab and corresponding content
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        document.getElementById(`${tabName}Tab`).classList.add('active');
+        
+        // Handle different tab content IDs
+        let tabContentId;
+        if (tabName === 'todos') {
+            tabContentId = 'todosTab';
+        } else if (tabName === 'progress') {
+            tabContentId = 'progressTab';
+        } else if (tabName === 'planner') {
+            tabContentId = 'planner-tab';
+        } else if (tabName === 'activity') {
+            tabContentId = 'activityTab';
+        } else if (tabName === 'logs') {
+            tabContentId = 'logsTab';
+        }
+        
+        if (tabContentId) {
+            document.getElementById(tabContentId).classList.add('active');
+        }
 
         // Load progress items when switching to progress tab
         if (tabName === 'progress') {
@@ -350,6 +492,16 @@ class DesktopProgressController {
         // Load diagnostics when switching to logs tab
         if (tabName === 'logs') {
             this.loadDiagnostics();
+        }
+
+        // Initialize planner tab when switching to it
+        if (tabName === 'planner') {
+            this.initializePlannerTab();
+        }
+
+        // Initialize activity tab when switching to it
+        if (tabName === 'activity') {
+            this.initializeActivityTab();
         }
     }
 
@@ -379,21 +531,21 @@ class DesktopProgressController {
         }
 
         try {
-            // Update enabled toggle
+        // Update enabled toggle
             const enabledToggle = document.getElementById('enabledToggle');
             if (enabledToggle) {
                 enabledToggle.checked = this.settings.enabled;
             }
 
-            // Update working days
-            [0, 1, 2, 3, 4, 5, 6].forEach(day => {
+        // Update working days
+        [0, 1, 2, 3, 4, 5, 6].forEach(day => {
                 const checkbox = document.getElementById(`day${day}`);
                 if (checkbox && this.settings.workingHours && this.settings.workingHours.days) {
                     checkbox.checked = this.settings.workingHours.days.includes(day);
                 }
-            });
+        });
 
-            // Update time inputs
+        // Update time inputs
             const startTime = document.getElementById('startTime');
             const endTime = document.getElementById('endTime');
             if (startTime && this.settings.workingHours) {
@@ -403,13 +555,13 @@ class DesktopProgressController {
                 endTime.value = this.settings.workingHours.end || '17:00';
             }
 
-            // Update timezone dropdown
+        // Update timezone dropdown
             const timezone = document.getElementById('timezone');
             if (timezone && this.settings.workingHours) {
                 timezone.value = this.settings.workingHours.timezone || 'Europe/Berlin';
             }
 
-            // Update MCP server settings
+        // Update MCP server settings
             const mcpUrl = document.getElementById('mcpUrl');
             const mcpEndpoint = document.getElementById('mcpEndpoint');
             if (mcpUrl && this.settings.mcpServer) {
@@ -419,15 +571,15 @@ class DesktopProgressController {
                 mcpEndpoint.value = this.settings.mcpServer.endpoint || '/add-progress';
             }
 
-            // Update projects
-            this.updateProjectsUI();
+        // Update projects
+        this.updateProjectsUI();
 
-            // Update status
-            this.updateStatus();
-            this.updateLastReport();
-            
-            // Update to-do UI after projects are loaded
-            this.updateTodoUI();
+        // Update status
+        this.updateStatus();
+        this.updateLastReport();
+        
+        // Update to-do UI after projects are loaded
+        this.updateTodoUI();
             
             console.log('UI updated successfully');
         } catch (error) {
@@ -462,8 +614,8 @@ class DesktopProgressController {
         } else if (this.settings.paused) {
             statusClass = 'paused';
             if (this.settings.pauseUntil && !isNaN(new Date(this.settings.pauseUntil).getTime())) {
-                const pauseUntil = new Date(this.settings.pauseUntil);
-                detailedStatus = `Paused until ${pauseUntil.toLocaleTimeString()}`;
+            const pauseUntil = new Date(this.settings.pauseUntil);
+            detailedStatus = `Paused until ${pauseUntil.toLocaleTimeString()}`;
             } else {
                 detailedStatus = 'Paused';
             }
@@ -486,16 +638,14 @@ class DesktopProgressController {
             text.textContent = detailedStatus;
         }
 
-        // Update header status badge (simple)
-        if (statusDot) {
-            statusDot.className = `status-dot ${statusClass}`;
-        }
-        if (statusLabel) {
-            statusLabel.textContent = simpleStatus;
-        }
+        // Don't update header status badge here - it's managed by activity status
+        // The activity status (active/idle/inactive) takes precedence over working hours status
 
         // Update current time display
         this.updateCurrentTimeDisplay();
+
+        // Check for end of day
+        this.checkEndOfDay();
     }
 
     async loadServerStatus() {
@@ -649,6 +799,7 @@ class DesktopProgressController {
     }
 
     async saveSettings() {
+        this.setButtonLoading('saveSettings', true);
         try {
             console.log('Starting to save settings...');
             
@@ -695,10 +846,13 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Failed to save settings:', error);
             this.showStatus('settingsStatus', `Failed to save settings: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('saveSettings', false);
         }
     }
 
     async testMCPConnection() {
+        this.setButtonLoading('testConnection', true);
         this.showStatus('connectionStatus', 'Testing connection...', 'info');
         
         try {
@@ -719,10 +873,13 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Connection test failed:', error);
             this.showStatus('connectionStatus', 'Connection test failed', 'error');
+        } finally {
+            this.setButtonLoading('testConnection', false);
         }
     }
 
     async testNotification() {
+        this.setButtonLoading('testNotification', true);
         try {
             if (window.electronAPI && window.electronAPI.testNotification) {
                 await window.electronAPI.testNotification();
@@ -733,14 +890,41 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Notification test failed:', error);
             this.showStatus('connectionStatus', 'Notification test failed', 'error');
+        } finally {
+            this.setButtonLoading('testNotification', false);
+        }
+    }
+
+    async testEndOfDay() {
+        this.setButtonLoading('testEndOfDay', true);
+        try {
+            // Reset the shown today flag to allow testing
+            this.endOfDayShownToday = null;
+            
+            // Force show the end of day modal
+            this.showEndOfDayModal();
+            
+            this.addLog('End of day modal test triggered', 'success');
+            this.showStatus('connectionStatus', 'End of day modal test triggered!', 'success');
+        } catch (error) {
+            console.error('Test end of day failed:', error);
+            this.showStatus('connectionStatus', 'Test end of day failed', 'error');
+        } finally {
+            this.setButtonLoading('testEndOfDay', false);
         }
     }
 
     async triggerManualReport() {
+        this.setButtonLoading('triggerReport', true);
         this.showProgressModal();
+        // Reset loading state when modal is shown
+        setTimeout(() => {
+            this.setButtonLoading('triggerReport', false);
+        }, 500);
     }
 
     async pauseTracking() {
+        this.setButtonLoading('pauseTracking', true);
         try {
             this.settings.paused = !this.settings.paused;
             
@@ -762,6 +946,8 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Failed to toggle tracking:', error);
             this.showStatus('controlStatus', 'Failed to toggle tracking', 'error');
+        } finally {
+            this.setButtonLoading('pauseTracking', false);
         }
     }
 
@@ -843,6 +1029,12 @@ class DesktopProgressController {
         // Reset form
         document.getElementById('modalHours').value = '1';
         document.getElementById('modalDescription').value = '';
+        
+        // Set current time as default
+        const now = new Date();
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+        document.getElementById('modalTime').value = currentTime;
+        
         this.clearStatus('modalStatus');
 
         modal.style.display = 'block';
@@ -864,20 +1056,34 @@ class DesktopProgressController {
     }
 
     async submitProgressReport() {
+        this.setButtonLoading('submitProgressBtn', true);
         const selectedProject = document.querySelector('.project-btn.active')?.textContent || this.settings.defaultProject;
         const hours = parseFloat(document.getElementById('modalHours').value);
-        const description = document.getElementById('modalDescription').value.trim();
+        const rawDescription = document.getElementById('modalDescription').value.trim();
+        const description = this.removeEmojis(rawDescription);
+        const time = document.getElementById('modalTime').value;
 
         if (!description) {
             this.showStatus('modalStatus', 'Please enter a description', 'error');
+            this.setButtonLoading('submitProgressBtn', false);
             return;
         }
+
+        if (!time) {
+            this.showStatus('modalStatus', 'Please enter a time', 'error');
+            this.setButtonLoading('submitProgressBtn', false);
+            return;
+        }
+
+        // Create date with specified time, defaulting to today
+        const today = new Date().toISOString().split('T')[0];
+        const combinedDateTime = new Date(today + 'T' + time).toISOString();
 
         const progressData = {
             project: selectedProject,
             hours: hours,
             description: description,
-            date: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
+            date: combinedDateTime
         };
 
         this.showStatus('modalStatus', 'Submitting progress...', 'info');
@@ -900,6 +1106,8 @@ class DesktopProgressController {
             console.error('Failed to submit progress:', error);
             this.addLog(`Progress submission error: ${error.message}`, 'error');
             this.showStatus('modalStatus', 'Failed to submit progress', 'error');
+        } finally {
+            this.setButtonLoading('submitProgressBtn', false);
         }
     }
 
@@ -920,6 +1128,32 @@ class DesktopProgressController {
         element.style.display = 'none';
         element.textContent = '';
         element.className = 'status-message';
+    }
+
+    // ==================== LOADING STATE MANAGEMENT ====================
+
+    setButtonLoading(buttonId, loading = true) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            if (loading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+    }
+
+    setButtonsLoading(buttonIds, loading = true) {
+        buttonIds.forEach(id => this.setButtonLoading(id, loading));
+    }
+
+    // ==================== TEXT PROCESSING ====================
+
+    removeEmojis(text) {
+        // Remove emojis using regex that matches most emoji ranges
+        return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{200D}]/gu, '').trim();
     }
 
     // ==================== TO-DO MANAGEMENT ====================
@@ -944,7 +1178,8 @@ class DesktopProgressController {
 
     addTodo() {
         const project = document.getElementById('todoProject').value;
-        const description = document.getElementById('todoDescription').value.trim();
+        const rawDescription = document.getElementById('todoDescription').value.trim();
+        const description = this.removeEmojis(rawDescription);
         const date = document.getElementById('todoDate').value;
         const time = document.getElementById('todoTime').value;
         const hours = parseFloat(document.getElementById('todoHours').value);
@@ -1086,10 +1321,11 @@ class DesktopProgressController {
         todo.completedAt = new Date().toISOString();
 
         // Convert to progress report
+        const cleanDescription = this.removeEmojis(todo.description);
         const progressData = {
             project: todo.project,
             hours: todo.hours,
-            description: `✅ ${todo.description}`,
+            description: cleanDescription,
             date: todo.date
         };
 
@@ -1179,6 +1415,44 @@ class DesktopProgressController {
         }, 60000);
     }
 
+    startActivityStateUpdates() {
+        // Check activity state every 10 seconds to update state transitions
+        setInterval(() => {
+            const now = Date.now();
+            const timeSinceActivity = now - this.lastActivityTime;
+            const tenSeconds = 10 * 1000;
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            let stateChanged = false;
+            
+            // Transition from active to idle after 10 seconds
+            if (this.activityState === 'active' && timeSinceActivity >= tenSeconds) {
+                console.log('Transitioning from active to idle after 10 seconds');
+                this.activityState = 'idle';
+                stateChanged = true;
+            }
+            
+            // Transition from idle to inactive after 5 minutes
+            if (this.activityState === 'idle' && timeSinceActivity >= fiveMinutes) {
+                console.log('Transitioning from idle to inactive after 5 minutes');
+                this.activityState = 'inactive';
+                stateChanged = true;
+            }
+            
+            // Update UI if state changed
+            if (stateChanged) {
+                this.updateStatusDisplay();
+            }
+        }, 10000); // Check every 10 seconds
+        
+        // Refresh activity stats every minute to prevent flickering
+        setInterval(() => {
+            if (this.uiReady) {
+                this.refreshActivityStats();
+            }
+        }, 60000); // Every minute
+    }
+
     updateCurrentTimeDisplay() {
         const timezone = this.settings.workingHours.timezone || 'UTC';
         const now = new Date();
@@ -1210,6 +1484,7 @@ class DesktopProgressController {
 
     // Progress Items Management
     async loadProgressItems() {
+        this.setButtonLoading('refreshProgress', true);
         try {
             this.showStatus('progressStatus', 'Loading progress items...', 'info');
             
@@ -1258,6 +1533,8 @@ class DesktopProgressController {
             }
             
             this.showStatus('progressStatus', `Failed to load progress items: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('refreshProgress', false);
         }
     }
 
@@ -1289,7 +1566,19 @@ class DesktopProgressController {
         tbody.innerHTML = filteredItems.map(item => {
             const date = new Date(item.date);
             const formattedDate = date.toLocaleDateString();
-            const formattedTime = date.toLocaleTimeString();
+            
+            // Handle time display - check if we have a valid time
+            let formattedTime;
+            if (isNaN(date.getTime())) {
+                // If date is invalid, try to parse it differently
+                formattedTime = 'Invalid time';
+            } else if (item.date.includes('T') || item.date.includes(' ')) {
+                // Has time component
+                formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                // Date only, show as "All day"
+                formattedTime = 'All day';
+            }
             
             return `
                 <tr>
@@ -1409,33 +1698,58 @@ class DesktopProgressController {
         document.getElementById('editHours').value = item.hours;
         document.getElementById('editDescription').value = item.description;
         
-        // Format date for input (YYYY-MM-DD)
+        // Format date and time for inputs
         const date = new Date(item.date);
-        const formattedDate = date.toISOString().split('T')[0];
+        let formattedDate, formattedTime;
+        
+        if (isNaN(date.getTime())) {
+            // Invalid date, use current date/time as fallback
+            const now = new Date();
+            formattedDate = now.toISOString().split('T')[0];
+            formattedTime = now.toTimeString().split(' ')[0].substring(0, 5);
+        } else {
+            formattedDate = date.toISOString().split('T')[0];
+            if (item.date.includes('T') || item.date.includes(' ')) {
+                // Has time component
+                formattedTime = date.toTimeString().split(' ')[0].substring(0, 5);
+            } else {
+                // Date only, use current time as default
+                formattedTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
+            }
+        }
+        
         document.getElementById('editDate').value = formattedDate;
+        document.getElementById('editTime').value = formattedTime;
         
         // Show the modal
         document.getElementById('editProgressModal').style.display = 'block';
     }
 
     async saveProgressItem() {
+        this.setButtonLoading('saveProgressChangesBtn', true);
         try {
             const project = document.getElementById('editProject').value;
             const hours = parseFloat(document.getElementById('editHours').value);
-            const description = document.getElementById('editDescription').value.trim();
+            const rawDescription = document.getElementById('editDescription').value.trim();
+            const description = this.removeEmojis(rawDescription);
             const date = document.getElementById('editDate').value;
+            const time = document.getElementById('editTime').value;
 
-            if (!hours || !description || !date) {
+            if (!hours || !description || !date || !time) {
                 this.showStatus('editModalStatus', 'Please fill in all required fields', 'error');
+                this.setButtonLoading('saveProgressChangesBtn', false);
                 return;
             }
+
+            // Combine date and time into ISO string
+            const combinedDateTime = new Date(date + 'T' + time).toISOString();
 
             const updatedItem = {
                 id: this.currentEditingItem.id,
                 project,
                 hours,
                 description,
-                date: new Date(date).toISOString()
+                date: combinedDateTime
             };
 
             this.showStatus('editModalStatus', 'Saving changes...', 'info');
@@ -1458,6 +1772,8 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Failed to save progress item:', error);
             this.showStatus('editModalStatus', 'Failed to save changes', 'error');
+        } finally {
+            this.setButtonLoading('saveProgressChangesBtn', false);
         }
     }
 
@@ -1466,6 +1782,7 @@ class DesktopProgressController {
             return;
         }
 
+        this.setButtonLoading('deleteProgress', true);
         try {
             this.showStatus('progressStatus', 'Deleting progress item...', 'info');
 
@@ -1485,6 +1802,8 @@ class DesktopProgressController {
         } catch (error) {
             console.error('Failed to delete progress item:', error);
             this.showStatus('progressStatus', 'Failed to delete progress item', 'error');
+        } finally {
+            this.setButtonLoading('deleteProgress', false);
         }
     }
 
@@ -1596,23 +1915,32 @@ class DesktopProgressController {
     }
 
     async loadDiagnostics() {
+        this.setButtonLoading('refreshDiagnostics', true);
         this.addLog('Loading diagnostics...', 'info');
         
-        // Update server status
-        await this.updateDiagnosticServerStatus();
-        
-        // Test environment file
-        await this.testEnvironmentFile();
-        
-        // Test Airtable connection
-        await this.testAirtableConnection();
-        
-        this.addLog('Diagnostics loaded', 'success');
+        try {
+            // Update server status
+            await this.updateDiagnosticServerStatus();
+            
+            // Test environment file
+            await this.testEnvironmentFile();
+            
+            // Test Airtable connection
+            await this.testAirtableConnection();
+            
+            this.addLog('Diagnostics loaded', 'success');
+        } finally {
+            this.setButtonLoading('refreshDiagnostics', false);
+        }
     }
 
     async updateDiagnosticServerStatus() {
+        this.setButtonLoading('testServerHealth', true);
         const serverStatusValue = document.getElementById('serverStatusValue');
-        if (!serverStatusValue) return;
+        if (!serverStatusValue) {
+            this.setButtonLoading('testServerHealth', false);
+            return;
+        }
 
         try {
             if (window.electronAPI && window.electronAPI.getServerStatus) {
@@ -1636,6 +1964,8 @@ class DesktopProgressController {
             serverStatusValue.textContent = `❌ Check failed: ${error.message}`;
             serverStatusValue.style.color = 'var(--accent-red)';
             this.addLog(`Server status check failed: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('testServerHealth', false);
         }
     }
 
@@ -1663,8 +1993,12 @@ class DesktopProgressController {
     }
 
     async testAirtableConnection() {
+        this.setButtonLoading('testAirtableConnection', true);
         const airtableStatus = document.getElementById('airtableStatus');
-        if (!airtableStatus) return;
+        if (!airtableStatus) {
+            this.setButtonLoading('testAirtableConnection', false);
+            return;
+        }
 
         try {
             if (window.electronAPI && window.electronAPI.getProgressItems) {
@@ -1691,7 +2025,1431 @@ class DesktopProgressController {
             airtableStatus.textContent = `❌ Error: ${error.message}`;
             airtableStatus.style.color = 'var(--accent-red)';
             this.addLog(`Airtable connection test failed: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('testAirtableConnection', false);
         }
+    }
+
+    // AI Planner Methods
+    async generateWeeklyPlan() {
+        this.setButtonLoading('generatePlan', true);
+        this.showStatus('plannerStatus', '', '');
+
+        try {
+            // Get form values
+            const project = document.getElementById('plannerProject').value;
+            const goals = document.getElementById('plannerGoals').value.trim();
+            const workPattern = parseFloat(document.getElementById('plannerWorkPattern').value);
+            
+            // Validate inputs
+            if (!project) {
+                this.showStatus('plannerStatus', 'Please select a project', 'error');
+                return;
+            }
+            
+            if (!goals) {
+                this.showStatus('plannerStatus', 'Please describe your weekly goals', 'error');
+                return;
+            }
+
+            // Get selected working days
+            const workingDays = [];
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((day, index) => {
+                if (document.getElementById(`planner${day}`).checked) {
+                    workingDays.push(index + 1); // 1-7 for Monday-Sunday
+                }
+            });
+
+            if (workingDays.length === 0) {
+                this.showStatus('plannerStatus', 'Please select at least one working day', 'error');
+                return;
+            }
+
+            this.showStatus('plannerStatus', 'Generating weekly plan with AI...', 'info');
+            this.addLog('Generating AI weekly plan...', 'info');
+
+            // Generate the plan using AI
+            const generatedPlan = await this.callAIForWeeklyPlan(project, goals, workPattern, workingDays);
+            
+            // Display the generated plan
+            this.displayGeneratedPlan(generatedPlan);
+            
+            this.showStatus('plannerStatus', 'Weekly plan generated successfully!', 'success');
+            this.addLog('AI weekly plan generated successfully', 'success');
+
+        } catch (error) {
+            console.error('Error generating weekly plan:', error);
+            this.showStatus('plannerStatus', `Error generating plan: ${error.message}`, 'error');
+            this.addLog(`Failed to generate weekly plan: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('generatePlan', false);
+        }
+    }
+
+    async callAIForWeeklyPlan(project, goals, workPattern, workingDays) {
+        try {
+            this.addLog('Calling Anthropic API for intelligent plan generation...', 'info');
+            
+            const response = await fetch('http://localhost:8087/generate-plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    project: project,
+                    goals: goals,
+                    workPattern: workPattern,
+                    workingDays: workingDays
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.success || !data.plan) {
+                throw new Error('Invalid response from AI planning service');
+            }
+
+            this.addLog(`AI generated ${data.plan.tasks.length} intelligent tasks for ${project}`, 'success');
+            return data.plan;
+            
+        } catch (error) {
+            this.addLog(`AI planning failed: ${error.message}`, 'error');
+            
+            // Fallback to basic planning if AI fails
+            this.addLog('Falling back to basic task generation...', 'warning');
+            return this.generateBasicPlan(project, goals, workPattern, workingDays);
+        }
+    }
+
+    generateBasicPlan(project, goals, workPattern, workingDays) {
+        // Fallback basic planning when AI is not available
+        const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const currentDate = new Date();
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Start from Monday
+        
+        const tasks = [];
+        let taskCounter = 1;
+
+        // Generate tasks for each working day
+        workingDays.forEach(dayNumber => {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + dayNumber - 1);
+            
+            const dayName = dayNames[dayNumber];
+            const dayTasks = this.generateBasicTasksForDay(project, goals, workPattern, dayName, taskCounter);
+            
+            dayTasks.forEach(task => {
+                tasks.push({
+                    ...task,
+                    date: date.toISOString().split('T')[0],
+                    dayName: dayName
+                });
+                taskCounter++;
+            });
+        });
+
+        return {
+            project: project,
+            totalHours: workingDays.length * workPattern,
+            totalDays: workingDays.length,
+            workPattern: workPattern,
+            tasks: tasks
+        };
+    }
+
+    generateBasicTasksForDay(project, goals, workPattern, dayName, startCounter) {
+        // Parse goals to understand the context
+        const tasks = [];
+        const hoursPerDay = workPattern;
+        
+        // Generate realistic task durations that add up to the daily hours
+        const taskDurations = this.generateTaskDurations(hoursPerDay);
+        let currentTime = 9; // Start at 9 AM
+        
+        // Sample task templates based on common development work
+        const taskTemplates = [
+            "Research and planning for {focus}",
+            "Implement {feature} functionality", 
+            "Code review and testing for {component}",
+            "Debug and fix issues in {area}",
+            "Design and architecture for {system}",
+            "Documentation and comments for {module}",
+            "Integration testing with {service}",
+            "Performance optimization for {feature}",
+            "User interface improvements for {component}",
+            "Database schema updates for {data}",
+            "API endpoint development for {functionality}",
+            "Security review and hardening for {area}"
+        ];
+
+        // Extract key terms from goals for more relevant tasks
+        const keyTerms = this.extractKeyTermsFromGoals(goals);
+        
+        taskDurations.forEach((duration, index) => {
+            const template = taskTemplates[index % taskTemplates.length];
+            const keyTerm = keyTerms[index % keyTerms.length] || 'core functionality';
+            
+            const title = template.replace(/\{[^}]+\}/g, keyTerm);
+            
+            // Calculate time with breaks
+            const startTime = this.formatTime(currentTime);
+            currentTime += duration;
+            if (index < taskDurations.length - 1 && duration >= 2) {
+                currentTime += 0.25; // Add 15-minute break after 2+ hour tasks
+            }
+            const endTime = this.formatTime(currentTime - (index < taskDurations.length - 1 ? 0.25 : 0));
+            
+            tasks.push({
+                id: `task-${startCounter + index}`,
+                title: title,
+                hours: duration,
+                startTime: startTime,
+                endTime: endTime,
+                description: `${duration}h task focusing on ${keyTerm} - scheduled for ${dayName}`
+            });
+        });
+
+        return tasks;
+    }
+
+    generateTaskDurations(totalHours) {
+        // Generate realistic task durations that add up to totalHours
+        const durations = [];
+        let remaining = totalHours;
+        
+        while (remaining > 0) {
+            if (remaining >= 3) {
+                // Add a 2-3 hour task
+                const duration = Math.random() > 0.5 ? 2.5 : 3;
+                durations.push(Math.min(duration, remaining));
+                remaining -= Math.min(duration, remaining);
+            } else if (remaining >= 1.5) {
+                // Add a 1.5-2 hour task
+                const duration = Math.random() > 0.5 ? 1.5 : 2;
+                durations.push(Math.min(duration, remaining));
+                remaining -= Math.min(duration, remaining);
+            } else if (remaining >= 1) {
+                // Add a 1 hour task
+                durations.push(Math.min(1, remaining));
+                remaining -= Math.min(1, remaining);
+            } else {
+                // Add remaining time as final task
+                durations.push(remaining);
+                remaining = 0;
+            }
+        }
+        
+        return durations;
+    }
+
+    extractKeyTermsFromGoals(goals) {
+        // Simple keyword extraction - in a real AI implementation, this would be more sophisticated
+        const commonTerms = [
+            'authentication', 'user management', 'database', 'API', 'frontend', 'backend',
+            'testing', 'deployment', 'security', 'performance', 'UI/UX', 'integration',
+            'documentation', 'monitoring', 'analytics', 'search', 'notifications',
+            'payment', 'messaging', 'file upload', 'reporting', 'admin panel'
+        ];
+        
+        const foundTerms = commonTerms.filter(term => 
+            goals.toLowerCase().includes(term.toLowerCase())
+        );
+        
+        // If no specific terms found, use generic ones
+        if (foundTerms.length === 0) {
+            return ['core features', 'system components', 'user interface', 'data management'];
+        }
+        
+        return foundTerms.length > 0 ? foundTerms : ['development tasks'];
+    }
+
+    formatTime(hours) {
+        const hour = Math.floor(hours);
+        const minutes = Math.round((hours - hour) * 60);
+        return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+
+    displayGeneratedPlan(plan) {
+        const planSection = document.getElementById('generatedPlanSection');
+        const planSummary = document.getElementById('planSummary');
+        const generatedTasks = document.getElementById('generatedTasks');
+        
+        // Show the plan section
+        planSection.style.display = 'block';
+        
+        // Update summary
+        planSummary.innerHTML = `
+            <h4>📊 Plan Summary</h4>
+            <div style="display: flex; gap: 20px; margin-top: 12px;">
+                <div><strong>Project:</strong> ${plan.project}</div>
+                <div><strong>Total Hours:</strong> ${plan.totalHours}h</div>
+                <div><strong>Working Days:</strong> ${plan.totalDays}</div>
+                <div><strong>Hours/Day:</strong> ${plan.workPattern}h</div>
+            </div>
+        `;
+        
+        // Group tasks by day
+        const tasksByDay = {};
+        plan.tasks.forEach(task => {
+            if (!tasksByDay[task.dayName]) {
+                tasksByDay[task.dayName] = [];
+            }
+            tasksByDay[task.dayName].push(task);
+        });
+        
+        // Generate tasks HTML
+        let tasksHTML = '';
+        Object.entries(tasksByDay).forEach(([dayName, dayTasks]) => {
+            const dayDate = dayTasks[0].date;
+            const totalDayHours = dayTasks.reduce((sum, task) => sum + task.hours, 0);
+            
+            tasksHTML += `
+                <div class="task-day">
+                    <div class="task-day-header">
+                        ${dayName}, ${new Date(dayDate + 'T00:00:00').toLocaleDateString()} 
+                        (${totalDayHours}h total)
+                    </div>
+                    ${dayTasks.map(task => `
+                        <div class="task-item" data-task-id="${task.id}">
+                            <div class="task-content">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-details">
+                                    <span>📅 ${dayName}</span>
+                                    <span>⏰ ${task.startTime} - ${task.endTime}</span>
+                                </div>
+                            </div>
+                            <div class="task-meta">
+                                <div class="task-hours">${task.hours}h</div>
+                                <div class="task-time">${task.startTime}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        });
+        
+        generatedTasks.innerHTML = tasksHTML;
+        
+        // Store the plan for later use
+        this.currentGeneratedPlan = plan;
+    }
+
+    async addAllGeneratedTodos() {
+        if (!this.currentGeneratedPlan || !this.currentGeneratedPlan.tasks) {
+            this.showStatus('planActionsStatus', 'No plan available to add', 'error');
+            return;
+        }
+
+        this.setButtonLoading('addAllTodos', true);
+        this.showStatus('planActionsStatus', '', '');
+
+        try {
+            let addedCount = 0;
+            const tasks = this.currentGeneratedPlan.tasks;
+            
+            this.showStatus('planActionsStatus', `Adding ${tasks.length} tasks to todo list...`, 'info');
+            
+            // Add each task to the todo list
+            for (const task of tasks) {
+                const todo = {
+                    id: Date.now() + Math.random(),
+                    description: this.removeEmojis(task.title),
+                    project: this.currentGeneratedPlan.project,
+                    date: task.date,
+                    time: task.startTime,
+                    hours: task.hours,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                
+                this.todos.push(todo);
+                addedCount++;
+            }
+            
+            // Save todos and update UI
+            this.saveTodos();
+            this.updateTodoUI();
+            
+            // Switch to todos tab to show the results
+            this.switchTab('todos');
+            
+            this.showStatus('planActionsStatus', `Successfully added ${addedCount} tasks to your todo list!`, 'success');
+            this.addLog(`Added ${addedCount} AI-generated tasks to todo list`, 'success');
+            
+        } catch (error) {
+            console.error('Error adding todos:', error);
+            this.showStatus('planActionsStatus', `Error adding tasks: ${error.message}`, 'error');
+            this.addLog(`Failed to add AI-generated tasks: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('addAllTodos', false);
+        }
+    }
+
+    clearGeneratedPlan() {
+        const planSection = document.getElementById('generatedPlanSection');
+        planSection.style.display = 'none';
+        this.currentGeneratedPlan = null;
+        this.showStatus('planActionsStatus', 'Plan cleared', 'info');
+        this.addLog('Generated plan cleared', 'info');
+    }
+
+    initializePlannerTab() {
+        // Populate project dropdown
+        const plannerProject = document.getElementById('plannerProject');
+        if (plannerProject && this.settings && this.settings.projects) {
+            plannerProject.innerHTML = '<option value="">Select a project...</option>';
+            this.settings.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                if (project === this.settings.defaultProject) {
+                    option.selected = true;
+                }
+                plannerProject.appendChild(option);
+            });
+        }
+
+        // Set current date for today's date
+        const today = new Date();
+        const currentTime = today.toTimeString().slice(0, 5);
+        
+        // Set default working pattern based on settings
+        const workPattern = document.getElementById('plannerWorkPattern');
+        if (workPattern) {
+            // Default to 8 hours, but could be customized based on user settings
+            workPattern.value = '8';
+        }
+
+        // Set working days based on user settings
+        if (this.settings && this.settings.workingHours && this.settings.workingHours.days) {
+            const dayMapping = {
+                1: 'plannerMon',
+                2: 'plannerTue', 
+                3: 'plannerWed',
+                4: 'plannerThu',
+                5: 'plannerFri',
+                6: 'plannerSat',
+                0: 'plannerSun'
+            };
+
+            // First uncheck all
+            ['plannerMon', 'plannerTue', 'plannerWed', 'plannerThu', 'plannerFri', 'plannerSat', 'plannerSun'].forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) checkbox.checked = false;
+            });
+
+            // Then check the working days
+            this.settings.workingHours.days.forEach(day => {
+                const checkboxId = dayMapping[day];
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    }
+
+    // End of Day Methods
+    checkEndOfDay() {
+        if (!this.settings || !this.settings.enabled || this.settings.paused) {
+            return;
+        }
+
+        const timezone = this.settings.workingHours.timezone || 'UTC';
+        const now = new Date();
+        
+        // Get current time in working timezone
+        const timeInTimezone = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            weekday: 'short'
+        }).formatToParts(now);
+        
+        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayName = timeInTimezone.find(part => part.type === 'weekday').value;
+        const currentDay = weekdays.indexOf(dayName);
+        
+        const hour = parseInt(timeInTimezone.find(part => part.type === 'hour').value);
+        const minute = parseInt(timeInTimezone.find(part => part.type === 'minute').value);
+        const currentTime = hour * 60 + minute;
+
+        // Check if it's a working day
+        if (!this.settings.workingHours.days.includes(currentDay)) {
+            return;
+        }
+
+        // Get end time
+        const [endHour, endMin] = this.settings.workingHours.end.split(':').map(Number);
+        const endTime = endHour * 60 + endMin;
+
+        // Check if we're within 5 minutes of end time or just past it
+        const timeDiff = currentTime - endTime;
+        const isEndOfDay = timeDiff >= 0 && timeDiff <= 5; // 0-5 minutes past end time
+
+        if (isEndOfDay && !this.endOfDayShownToday) {
+            this.showEndOfDayModal();
+        }
+    }
+
+    showEndOfDayModal() {
+        // Mark as shown for today
+        const today = new Date().toDateString();
+        this.endOfDayShownToday = today;
+        
+        // Get today's todos
+        const todayTodos = this.getTodayTodos();
+        
+        if (todayTodos.length === 0) {
+            // No todos for today, skip the modal
+            this.addLog('No todos scheduled for today - skipping end of day review', 'info');
+            return;
+        }
+
+        // Populate the modal
+        this.populateEndOfDayModal(todayTodos);
+        
+        // Show the modal
+        document.getElementById('endOfDayModal').classList.add('show');
+        
+        this.addLog(`End of day review shown with ${todayTodos.length} todos`, 'info');
+    }
+
+    getTodayTodos() {
+        const today = new Date().toISOString().split('T')[0];
+        return this.todos.filter(todo => 
+            !todo.completed && 
+            todo.date === today
+        );
+    }
+
+    populateEndOfDayModal(todayTodos) {
+        const todosList = document.getElementById('todayTodosList');
+        
+        if (todayTodos.length === 0) {
+            todosList.innerHTML = `
+                <div class="empty-todos">
+                    No todos scheduled for today
+                </div>
+            `;
+            return;
+        }
+
+        todosList.innerHTML = todayTodos.map(todo => `
+            <div class="todo-review-item" data-todo-id="${todo.id}">
+                <input type="checkbox" class="todo-checkbox" id="todo-${todo.id}">
+                <div class="todo-review-content">
+                    <div class="todo-review-title">${todo.description}</div>
+                    <div class="todo-review-details">
+                        <span>📁 ${todo.project}</span>
+                        <span>📅 ${new Date(todo.date).toLocaleDateString()}</span>
+                        ${todo.time ? `<span>⏰ ${todo.time}</span>` : ''}
+                    </div>
+                </div>
+                <div class="todo-review-meta">
+                    ${todo.hours ? `<div class="todo-hours-badge">${todo.hours}h</div>` : ''}
+                    ${todo.time ? `<div class="todo-time-badge">${todo.time}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        // Add click handlers for checkboxes and rows
+        todosList.querySelectorAll('.todo-review-item').forEach(item => {
+            const checkbox = item.querySelector('.todo-checkbox');
+            
+            // Click on row toggles checkbox
+            item.addEventListener('click', (e) => {
+                if (e.target.type !== 'checkbox') {
+                    checkbox.checked = !checkbox.checked;
+                    this.updateTodoItemSelection(item, checkbox.checked);
+                }
+            });
+
+            // Checkbox change updates selection
+            checkbox.addEventListener('change', (e) => {
+                this.updateTodoItemSelection(item, e.target.checked);
+            });
+        });
+    }
+
+    updateTodoItemSelection(item, selected) {
+        if (selected) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    }
+
+    selectAllTodayTodos() {
+        const checkboxes = document.querySelectorAll('#todayTodosList .todo-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            const item = checkbox.closest('.todo-review-item');
+            this.updateTodoItemSelection(item, true);
+        });
+    }
+
+    selectNoneTodayTodos() {
+        const checkboxes = document.querySelectorAll('#todayTodosList .todo-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            const item = checkbox.closest('.todo-review-item');
+            this.updateTodoItemSelection(item, false);
+        });
+    }
+
+    async submitSelectedTodos() {
+        this.setButtonLoading('submitSelectedTodos', true);
+        this.showStatus('endOfDayStatus', '', '');
+
+        try {
+            const selectedCheckboxes = document.querySelectorAll('#todayTodosList .todo-checkbox:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                this.showStatus('endOfDayStatus', 'Please select at least one todo to submit', 'error');
+                return;
+            }
+
+            let submittedCount = 0;
+            const errors = [];
+
+            for (const checkbox of selectedCheckboxes) {
+                const todoId = checkbox.id.replace('todo-', '');
+                const todo = this.todos.find(t => t.id == todoId);
+                
+                if (todo) {
+                    try {
+                        // Create progress item
+                        const progressData = {
+                            hours: todo.hours || 1,
+                            description: this.removeEmojis(todo.description),
+                            date: new Date().toISOString(),
+                            project: todo.project
+                        };
+
+                        // Submit to server
+                        const response = await fetch('http://localhost:8087/add-progress', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(progressData)
+                        });
+
+                        if (response.ok) {
+                            // Mark todo as completed
+                            todo.completed = true;
+                            todo.completedAt = new Date().toISOString();
+                            submittedCount++;
+                            
+                            this.addLog(`Submitted progress: ${todo.description} (${todo.hours || 1}h)`, 'success');
+                        } else {
+                            const errorData = await response.json();
+                            errors.push(`${todo.description}: ${errorData.error}`);
+                        }
+                    } catch (error) {
+                        errors.push(`${todo.description}: ${error.message}`);
+                    }
+                }
+            }
+
+            // Save updated todos
+            this.saveTodos();
+            this.updateTodoUI();
+
+            if (submittedCount > 0) {
+                this.showStatus('endOfDayStatus', 
+                    `Successfully submitted ${submittedCount} progress item${submittedCount > 1 ? 's' : ''}!`, 
+                    'success'
+                );
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    this.hideEndOfDayModal();
+                }, 2000);
+            }
+
+            if (errors.length > 0) {
+                this.showStatus('endOfDayStatus', 
+                    `${submittedCount} submitted, ${errors.length} failed: ${errors.join(', ')}`, 
+                    'warning'
+                );
+            }
+
+        } catch (error) {
+            console.error('Error submitting selected todos:', error);
+            this.showStatus('endOfDayStatus', `Error submitting progress: ${error.message}`, 'error');
+            this.addLog(`Failed to submit end-of-day progress: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('submitSelectedTodos', false);
+        }
+    }
+
+    skipEndOfDayReview() {
+        this.addLog('End of day review skipped by user', 'info');
+        this.hideEndOfDayModal();
+    }
+
+    hideEndOfDayModal() {
+        document.getElementById('endOfDayModal').classList.remove('show');
+        this.showStatus('endOfDayStatus', '', '');
+    }
+
+    // Activity Monitoring Methods
+    updateActivityStats(activityData) {
+        this.activityStats = { ...this.activityStats, ...activityData };
+        this.updateActivityUI();
+    }
+
+    updateActivityUI() {
+        // Update activity overview cards
+        const todayActiveTime = document.getElementById('todayActiveTime');
+        const todayLoggedTime = document.getElementById('todayLoggedTime');
+        const todayEfficiency = document.getElementById('todayEfficiency');
+        const activityStatus = document.getElementById('activityStatus');
+
+        if (todayActiveTime) {
+            // Show total time including current session if active
+            const totalActiveTime = this.activityStats.dailyActive + 
+                (this.activityStats.isActive ? this.activityStats.sessionTime : 0);
+            todayActiveTime.textContent = this.formatDuration(totalActiveTime);
+        }
+
+        if (todayLoggedTime) {
+            // Calculate logged time from progress items for today
+            const today = new Date().toISOString().split('T')[0];
+            const todayProgress = this.getProgressItemsForDate(today);
+            const loggedMs = todayProgress.reduce((total, item) => total + (item.hours * 3600000), 0);
+            todayLoggedTime.textContent = this.formatDuration(loggedMs);
+        }
+
+        if (todayEfficiency) {
+            const totalActiveTime = this.activityStats.dailyActive + 
+                (this.activityStats.isActive ? this.activityStats.sessionTime : 0);
+            const loggedMs = this.getTodayLoggedTime();
+            const efficiency = totalActiveTime > 0 ? Math.round((loggedMs / totalActiveTime) * 100) : 0;
+            todayEfficiency.textContent = `${Math.min(efficiency, 100)}%`;
+        }
+
+        if (activityStatus) {
+            activityStatus.textContent = this.activityStats.isActive ? 'Active' : 'Idle';
+        }
+
+        // Update real-time monitor
+        const currentSessionTime = document.getElementById('currentSessionTime');
+        const activityStatusDot = document.getElementById('activityStatusDot');
+        const activityStatusText = document.getElementById('activityStatusText');
+
+        if (currentSessionTime) {
+            currentSessionTime.textContent = this.formatDuration(this.activityStats.sessionTime);
+        }
+
+        if (activityStatusDot) {
+            activityStatusDot.className = `status-dot ${this.activityStats.isActive ? 'active' : ''}`;
+        }
+
+        if (activityStatusText) {
+            activityStatusText.textContent = this.activityStats.isActive ? 'Active' : 'Idle';
+        }
+
+        // Update breakdown
+        this.updateActivityBreakdown();
+        
+        // Update weekly insights
+        this.updateWeeklyInsights();
+    }
+
+    updateActivityBreakdown() {
+        const activePeriods = document.getElementById('activePeriods');
+        const idlePeriods = document.getElementById('idlePeriods');
+        const focusSessions = document.getElementById('focusSessions');
+        const peakActivity = document.getElementById('peakActivity');
+
+        // Calculate periods (simplified - in real implementation, you'd track session changes)
+        const totalActive = this.activityStats.dailyActive / 1000; // Convert to seconds
+        const totalIdle = this.activityStats.dailyIdle / 1000;
+        
+        if (activePeriods) {
+            activePeriods.textContent = Math.ceil(totalActive / 1800); // Assume 30-min active periods
+        }
+
+        if (idlePeriods) {
+            idlePeriods.textContent = Math.ceil(totalIdle / 900); // Assume 15-min idle periods
+        }
+
+        if (focusSessions) {
+            focusSessions.textContent = Math.floor(totalActive / 3600); // 1-hour focus sessions
+        }
+
+        if (peakActivity) {
+            // Show current hour as peak for demo
+            const now = new Date();
+            const hour = now.getHours();
+            peakActivity.textContent = `${hour.toString().padStart(2, '0')}:00`;
+        }
+    }
+
+    formatDuration(milliseconds) {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else {
+            return `${minutes}m`;
+        }
+    }
+
+    getTodayLoggedTime() {
+        const today = new Date().toISOString().split('T')[0];
+        const todayProgress = this.getProgressItemsForDate(today);
+        return todayProgress.reduce((total, item) => total + (item.hours * 3600000), 0);
+    }
+
+    getProgressItemsForDate(date) {
+        // This would need to access progress items - for now return empty array
+        return [];
+    }
+
+    async refreshActivityStats() {
+        // Don't refresh if UI isn't ready yet - prevents flickering during initialization
+        if (!this.uiReady) {
+            console.log('🔄 Skipping activity stats refresh - UI not ready yet');
+            return;
+        }
+        
+        this.setButtonLoading('refreshActivity', true);
+        try {
+            // Activity Overview is now updated in real-time from native activity events
+            // This refresh just updates the UI with current stats
+            this.updateActivityUI();
+            this.addLog('Activity stats refreshed', 'success');
+            console.log('📊 Activity stats refreshed from real-time tracking:', this.activityStats);
+        } catch (error) {
+            console.error('Error refreshing activity stats:', error);
+            this.addLog('Failed to refresh activity stats', 'error');
+        } finally {
+            this.setButtonLoading('refreshActivity', false);
+        }
+    }
+
+    async exportActivityData() {
+        this.setButtonLoading('exportActivity', true);
+        try {
+            const stats = this.activityStats;
+            const data = {
+                date: new Date().toISOString().split('T')[0],
+                activeTime: this.formatDuration(stats.dailyActive),
+                idleTime: this.formatDuration(stats.dailyIdle),
+                totalTime: this.formatDuration(stats.totalTime),
+                efficiency: Math.round((this.getTodayLoggedTime() / stats.dailyActive) * 100),
+                isMonitoring: stats.isMonitoring,
+                exportedAt: new Date().toISOString()
+            };
+
+            // Create downloadable JSON file
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `activity-data-${data.date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.addLog('Activity data exported successfully', 'success');
+        } catch (error) {
+            console.error('Error exporting activity data:', error);
+            this.addLog('Failed to export activity data', 'error');
+        } finally {
+            this.setButtonLoading('exportActivity', false);
+        }
+    }
+
+    showActivitySettings() {
+        // For now, just show a simple alert - could be expanded to a modal
+        alert('Activity monitoring settings:\n\n• Monitoring runs automatically when app is open\n• Activity is detected based on window focus\n• Data is saved locally and resets daily\n• Idle threshold: 1 minute of inactivity');
+    }
+
+
+
+    // Initialize activity monitoring when switching to activity tab
+    async initializeActivityTab() {
+        try {
+            // Load today's activity stats from native monitor first
+            await this.refreshActivityStats();
+            
+            // Load native activity stats
+            await this.refreshNativeStats();
+            
+            // Load keypress counter stats
+            await this.refreshKeypressStats();
+            
+            // Start periodic update of last keypress time
+            if (this.keypressUpdateInterval) {
+                clearInterval(this.keypressUpdateInterval);
+            }
+            
+            this.keypressUpdateInterval = setInterval(() => {
+                this.updateLastKeypressDisplay();
+            }, 5000); // Update every 5 seconds
+        } catch (error) {
+            console.error('Error initializing activity tab:', error);
+        }
+    }
+
+    // Native Activity Monitoring Methods
+    async testNativeActivity() {
+        try {
+            this.setButtonLoading('testNativeActivity', true);
+            const result = await window.electronAPI.testNativeActivity();
+            
+            if (result.success) {
+                this.addLog('Native activity test triggered successfully', 'success');
+                // Refresh stats after test
+                setTimeout(() => this.refreshNativeStats(), 1000);
+            } else {
+                this.addLog(`Native activity test failed: ${result.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error testing native activity:', error);
+            this.addLog(`Error testing native activity: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('testNativeActivity', false);
+        }
+    }
+
+    async resetNativeStats() {
+        try {
+            this.setButtonLoading('resetNativeStats', true);
+            const result = await window.electronAPI.resetNativeActivityStats();
+            
+            if (result.success) {
+                this.addLog('Native activity stats reset successfully', 'success');
+                await this.refreshNativeStats();
+            } else {
+                this.addLog(`Failed to reset native stats: ${result.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error resetting native stats:', error);
+            this.addLog(`Error resetting native stats: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('resetNativeStats', false);
+        }
+    }
+
+    async refreshNativeStats() {
+        try {
+            this.setButtonLoading('refreshNativeStats', true);
+            const stats = await window.electronAPI.getNativeActivityStats();
+            
+            if (stats.error) {
+                this.updateNativeTrackingStatus('Not Available', 'error');
+                this.addLog(`Native tracking error: ${stats.error}`, 'warning');
+            } else {
+                this.updateNativeActivityUI(stats);
+                this.addLog('Native activity stats refreshed', 'info');
+            }
+        } catch (error) {
+            console.error('Error refreshing native stats:', error);
+            this.updateNativeTrackingStatus('Error', 'error');
+            this.addLog(`Error refreshing native stats: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('refreshNativeStats', false);
+        }
+    }
+
+    async resetKeypressStats() {
+        try {
+            this.setButtonLoading('resetKeypressStats', true);
+            const result = await window.electronAPI.resetNativeActivityStats();
+            
+            if (result.success) {
+                this.addLog('Keypress counter reset successfully', 'success');
+                // Reset the display
+                this.resetKeypressDisplay();
+            } else {
+                this.addLog(`Failed to reset keypress counter: ${result.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error resetting keypress counter:', error);
+            this.addLog(`Error resetting keypress counter: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('resetKeypressStats', false);
+        }
+    }
+
+    async refreshKeypressStats() {
+        try {
+            this.setButtonLoading('refreshKeypressStats', true);
+            const stats = await window.electronAPI.getNativeActivityStats();
+            
+            if (stats.error) {
+                this.addLog(`Keypress tracking error: ${stats.error}`, 'warning');
+            } else {
+                this.updateKeypressUI(stats);
+                this.addLog('Keypress stats refreshed', 'info');
+            }
+        } catch (error) {
+            console.error('Error refreshing keypress stats:', error);
+            this.addLog(`Error refreshing keypress stats: ${error.message}`, 'error');
+        } finally {
+            this.setButtonLoading('refreshKeypressStats', false);
+        }
+    }
+
+    updateKeypressUI(stats) {
+        // Initialize keypress tracking variables if they don't exist
+        if (!this.keypressData) {
+            this.keypressData = {
+                startTime: Date.now(),
+                lastKeypressTime: null,
+                totalKeypresses: 0,
+                maxKeysPerMinute: 0,
+                lastMinuteKeys: 0,
+                lastMinuteStartTime: Date.now()
+            };
+        }
+
+        if (stats.stats && stats.stats.keyPresses !== undefined) {
+            this.keypressData.totalKeypresses = stats.stats.keyPresses;
+            
+            // Update main counter
+            const totalKeypresses = document.getElementById('totalKeypresses');
+            if (totalKeypresses) {
+                totalKeypresses.textContent = this.keypressData.totalKeypresses.toLocaleString();
+            }
+
+            // Calculate keys per minute
+            const now = Date.now();
+            const sessionDurationMinutes = (now - this.keypressData.startTime) / 60000;
+            const keysPerMinute = sessionDurationMinutes > 0 ? 
+                Math.round(this.keypressData.totalKeypresses / sessionDurationMinutes) : 0;
+            
+            const keysPerMinuteElement = document.getElementById('keysPerMinute');
+            if (keysPerMinuteElement) {
+                keysPerMinuteElement.textContent = keysPerMinute;
+            }
+
+            // Update peak rate
+            if (keysPerMinute > this.keypressData.maxKeysPerMinute) {
+                this.keypressData.maxKeysPerMinute = keysPerMinute;
+            }
+            
+            const peakKeysPerMinute = document.getElementById('peakKeysPerMinute');
+            if (peakKeysPerMinute) {
+                peakKeysPerMinute.textContent = this.keypressData.maxKeysPerMinute;
+            }
+
+            // Update last keypress time
+            if (stats.lastActivity) {
+                this.keypressData.lastKeypressTime = stats.lastActivity;
+            }
+        }
+
+        this.updateLastKeypressDisplay();
+    }
+
+    updateNativeActivityUI(stats) {
+        // Check if we're in fallback mode
+        if (stats.permissions && stats.permissions.fallbackMode) {
+            this.updateNativeTrackingStatus('Fallback Mode', 'info');
+            this.addLog(stats.permissions.message, 'info');
+        } else if (stats.permissions && !stats.permissions.hasPermissions) {
+            this.updateNativeTrackingStatus('Permissions Required', 'error');
+            this.addLog(stats.permissions.message, 'warning');
+            return;
+        } else {
+            // Update native tracking status
+            if (stats.isMonitoring) {
+                this.updateNativeTrackingStatus('Active', 'success');
+            } else {
+                this.updateNativeTrackingStatus('Inactive', 'warning');
+            }
+        }
+
+        // Update mouse movements
+        const mouseMovements = document.getElementById('mouseMovements');
+        if (mouseMovements && stats.stats) {
+            mouseMovements.textContent = stats.stats.mouseMovements || 0;
+        }
+
+        const windowSwitches = document.getElementById('windowSwitches');
+        if (windowSwitches && stats.stats) {
+            windowSwitches.textContent = stats.stats.windowSwitches || 0;
+        }
+
+        // Update last activity
+        const lastActivity = document.getElementById('lastNativeActivity');
+        if (lastActivity && stats.lastActivity) {
+            const lastActivityTime = new Date(stats.lastActivity);
+            const now = new Date();
+            const diffMs = now - lastActivityTime;
+            const diffSeconds = Math.floor(diffMs / 1000);
+            
+            if (diffSeconds < 60) {
+                lastActivity.textContent = `${diffSeconds}s ago`;
+            } else if (diffSeconds < 3600) {
+                const minutes = Math.floor(diffSeconds / 60);
+                lastActivity.textContent = `${minutes}m ago`;
+            } else {
+                lastActivity.textContent = lastActivityTime.toLocaleTimeString();
+            }
+        } else if (lastActivity) {
+            lastActivity.textContent = 'Never';
+        }
+    }
+
+    updateNativeTrackingStatus(status, type = 'info') {
+        const statusElement = document.getElementById('nativeTrackingStatus');
+        if (statusElement) {
+            statusElement.textContent = status;
+            statusElement.className = `activity-value ${type}`;
+        }
+    }
+
+    updateLastKeypressDisplay() {
+        const lastKeypress = document.getElementById('lastKeypress');
+        if (lastKeypress && this.keypressData && this.keypressData.lastKeypressTime) {
+            const lastKeypressTime = new Date(this.keypressData.lastKeypressTime);
+            const now = new Date();
+            const diffMs = now - lastKeypressTime;
+            const diffSeconds = Math.floor(diffMs / 1000);
+            
+            if (diffSeconds < 60) {
+                lastKeypress.textContent = `${diffSeconds}s ago`;
+            } else if (diffSeconds < 3600) {
+                const minutes = Math.floor(diffSeconds / 60);
+                lastKeypress.textContent = `${minutes}m ago`;
+            } else {
+                lastKeypress.textContent = lastKeypressTime.toLocaleTimeString();
+            }
+        } else if (lastKeypress) {
+            lastKeypress.textContent = 'Never';
+        }
+    }
+
+    resetKeypressDisplay() {
+        this.keypressData = {
+            startTime: Date.now(),
+            lastKeypressTime: null,
+            totalKeypresses: 0,
+            maxKeysPerMinute: 0,
+            lastMinuteKeys: 0,
+            lastMinuteStartTime: Date.now()
+        };
+
+        const totalKeypresses = document.getElementById('totalKeypresses');
+        if (totalKeypresses) {
+            totalKeypresses.textContent = '0';
+        }
+
+        const keysPerMinute = document.getElementById('keysPerMinute');
+        if (keysPerMinute) {
+            keysPerMinute.textContent = '0';
+        }
+
+        const peakKeysPerMinute = document.getElementById('peakKeysPerMinute');
+        if (peakKeysPerMinute) {
+            peakKeysPerMinute.textContent = '0';
+        }
+
+        const lastKeypress = document.getElementById('lastKeypress');
+        if (lastKeypress) {
+            lastKeypress.textContent = 'Never';
+        }
+    }
+
+    updateNativeActivityDisplay(data) {
+        console.log('🔔 Native activity display update:', data.type);
+        
+        // Don't update if UI isn't ready yet
+        if (!this.uiReady) {
+            console.log('⏳ Native activity display update skipped - UI not ready yet');
+            return;
+        }
+        
+        // Update stats in real-time when native activity is detected
+        if (data.stats) {
+            const mouseMovements = document.getElementById('mouseMovements');
+            if (mouseMovements) {
+                mouseMovements.textContent = data.stats.mouseMovements || 0;
+            }
+
+            const windowSwitches = document.getElementById('windowSwitches');
+            if (windowSwitches) {
+                windowSwitches.textContent = data.stats.windowSwitches || 0;
+            }
+        }
+
+        // Update last activity time for native tracking
+        const lastActivity = document.getElementById('lastNativeActivity');
+        if (lastActivity) {
+            lastActivity.textContent = 'Just now';
+        }
+        
+        // Handle keyboard activity specifically
+        if (data.type === 'keyboard' && data.totalKeyPresses !== undefined) {
+            // Initialize keypress data if not already done
+            if (!this.keypressData) {
+                this.keypressData = {
+                    startTime: Date.now(),
+                    lastKeypressTime: null,
+                    totalKeypresses: 0,
+                    maxKeysPerMinute: 0,
+                    lastMinuteKeys: 0,
+                    lastMinuteStartTime: Date.now()
+                };
+            }
+
+            // Update keypress count
+            this.keypressData.totalKeypresses = data.totalKeyPresses;
+            this.keypressData.lastKeypressTime = Date.now();
+
+            // Update UI elements
+            const totalKeypresses = document.getElementById('totalKeypresses');
+            if (totalKeypresses) {
+                totalKeypresses.textContent = this.keypressData.totalKeypresses.toLocaleString();
+            }
+
+            // Calculate and update keys per minute
+            const sessionDurationMinutes = (Date.now() - this.keypressData.startTime) / 60000;
+            const keysPerMinute = sessionDurationMinutes > 0 ? 
+                Math.round(this.keypressData.totalKeypresses / sessionDurationMinutes) : 0;
+            
+            const keysPerMinuteElement = document.getElementById('keysPerMinute');
+            if (keysPerMinuteElement) {
+                keysPerMinuteElement.textContent = keysPerMinute;
+            }
+
+            // Update peak rate
+            if (keysPerMinute > this.keypressData.maxKeysPerMinute) {
+                this.keypressData.maxKeysPerMinute = keysPerMinute;
+                const peakKeysPerMinute = document.getElementById('peakKeysPerMinute');
+                if (peakKeysPerMinute) {
+                    peakKeysPerMinute.textContent = this.keypressData.maxKeysPerMinute;
+                }
+            }
+
+            // Update last keypress time
+            this.updateLastKeypressDisplay();
+
+            console.log(`📝 Keypress detected - Total: ${this.keypressData.totalKeypresses}, Rate: ${keysPerMinute}/min`);
+        }
+
+        // Mark as active and update the status display
+        this.lastActivityTime = Date.now();
+        this.activityState = 'active';
+        this.updateStatusDisplay();
+
+        // Add visual feedback
+        if (data.type === 'keyboard') {
+            this.addLog(`Keyboard activity detected - Total keypresses: ${data.totalKeyPresses || 0}`, 'info');
+        } else {
+            this.addLog(`Native activity detected: ${data.type}`, 'info');
+        }
+    }
+
+    updateActivityStatusDisplay(data) {
+        console.log('Updating activity status display:', data);
+        
+        const now = Date.now();
+        
+        // Always update last activity time when any activity is detected
+        if (data.isActive) {
+            this.lastActivityTime = now;
+            this.activityState = 'active';
+        }
+        // Note: idle and inactive state transitions are handled by the periodic timer
+        // This prevents rapid state changes when the native monitor sends brief idle signals
+        
+        // Update the UI display
+        this.updateStatusDisplay();
+        
+        console.log(`Activity state: ${this.activityState}, Time since last activity: ${Math.round((now - this.lastActivityTime) / 1000)}s`);
+    }
+
+    updateStatusDisplay() {
+        console.log(`🎯 Updating status display - State: ${this.activityState}`);
+        
+        // Don't update if UI isn't ready yet
+        if (!this.uiReady) {
+            console.log('⏳ Status display update skipped - UI not ready yet');
+            return;
+        }
+        
+        // Update the UI elements based on current activity state without changing the state
+        let displayText, cssClass, dotClass;
+        switch (this.activityState) {
+            case 'active':
+                displayText = 'Active';
+                cssClass = 'success';
+                dotClass = 'active';
+                break;
+            case 'idle':
+                displayText = 'Idle';
+                cssClass = 'warning';
+                dotClass = 'idle';
+                break;
+            case 'inactive':
+                displayText = 'Inactive';
+                cssClass = 'warning';
+                dotClass = 'inactive';
+                break;
+        }
+        
+        // Update all status display elements
+        const activityStatus = document.getElementById('activityStatus');
+        if (activityStatus) {
+            activityStatus.textContent = displayText;
+            activityStatus.className = `activity-value ${cssClass}`;
+        }
+
+        const statusDot = document.getElementById('statusDot');
+        if (statusDot) {
+            statusDot.className = `status-dot ${dotClass}`;
+        }
+
+        const activityStatusDot = document.getElementById('activityStatusDot');
+        if (activityStatusDot) {
+            activityStatusDot.className = `status-dot ${dotClass}`;
+        }
+
+        const statusText = document.getElementById('statusText');
+        if (statusText) {
+            statusText.textContent = displayText;
+        }
+
+        const activityStatusText = document.getElementById('activityStatusText');
+        if (activityStatusText) {
+            activityStatusText.textContent = displayText;
+        }
+
+        const statusLabel = document.getElementById('statusLabel');
+        if (statusLabel) {
+            statusLabel.textContent = displayText;
+        }
+        
+        console.log(`✅ Status display updated to: ${displayText} (${dotClass})`);
+    }
+
+    // New methods to connect native activity to Activity Overview
+    updateActivityOverviewFromNativeActivity(data) {
+        if (!this.uiReady) return;
+        
+        // Update last activity time
+        this.lastActivityTime = Date.now();
+        
+        // If this is activity detection, mark as active and accumulate time
+        if (data.type === 'mouse' || data.type === 'keyboard' || data.type === 'window') {
+            if (!this.activityStats.isActive) {
+                this.activityStats.isActive = true;
+                this.activitySessionStart = Date.now();
+                console.log(`📊 Activity Overview: Started new session`);
+            }
+            
+            // Update session time
+            this.activityStats.sessionTime = Date.now() - this.activitySessionStart;
+            
+            // Update monitoring status
+            this.activityStats.isMonitoring = true;
+            
+            // Update the Activity Overview UI
+            this.updateActivityUI();
+            
+            console.log(`📊 Activity Overview: Session time ${this.formatDuration(this.activityStats.sessionTime)}`);
+        }
+    }
+
+    updateActivityOverviewFromStatusChange(data) {
+        if (!this.uiReady) return;
+        
+        const wasActive = this.activityStats.isActive;
+        this.activityStats.isActive = data.isActive;
+        
+        if (wasActive && !data.isActive) {
+            // User became inactive - add session time to daily active time
+            const sessionTime = Date.now() - this.activitySessionStart;
+            this.activityStats.dailyActive += sessionTime;
+            this.activityStats.totalTime = this.activityStats.dailyActive + this.activityStats.dailyIdle;
+            
+            console.log(`📊 Activity Overview: Session ended - ${this.formatDuration(sessionTime)}, Total today: ${this.formatDuration(this.activityStats.dailyActive)}`);
+        } else if (!wasActive && data.isActive) {
+            // User became active - start new session
+            this.activitySessionStart = Date.now();
+            console.log(`📊 Activity Overview: New session started`);
+        }
+        
+        // Update current session time
+        if (this.activityStats.isActive) {
+            this.activityStats.sessionTime = Date.now() - this.activitySessionStart;
+        } else {
+            this.activityStats.sessionTime = 0;
+        }
+        
+        // Update monitoring status
+        this.activityStats.isMonitoring = true;
+        
+        // Update the Activity Overview UI
+        this.updateActivityUI();
+        
+        console.log(`📊 Activity Overview: Status changed to ${data.isActive ? 'active' : 'inactive'}, Daily total: ${this.formatDuration(this.activityStats.dailyActive)}`);
+    }
+
+    updateWeeklyInsights() {
+        if (!this.uiReady) return;
+
+        // Most Productive Day (simplified - show today if active)
+        const mostProductiveDay = document.getElementById('mostProductiveDay');
+        const mostProductiveDetails = document.getElementById('mostProductiveDetails');
+        if (mostProductiveDay && mostProductiveDetails) {
+            const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+            const totalActiveTime = this.activityStats.dailyActive + 
+                (this.activityStats.isActive ? this.activityStats.sessionTime : 0);
+            mostProductiveDay.textContent = today;
+            mostProductiveDetails.textContent = this.formatDuration(totalActiveTime);
+        }
+
+        // Peak Hours (show current hour when active)
+        const peakHours = document.getElementById('peakHours');
+        const peakHoursDetails = document.getElementById('peakHoursDetails');
+        if (peakHours && peakHoursDetails) {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const hourString = `${currentHour.toString().padStart(2, '0')}:00`;
+            peakHours.textContent = this.activityStats.isActive ? hourString : 'Not active';
+            peakHoursDetails.textContent = this.activityStats.isActive ? 'Current active period' : 'No activity detected';
+        }
+
+        // Today's Progress (show daily active time)
+        const weeklyTrend = document.getElementById('weeklyTrend');
+        const weeklyTrendDetails = document.getElementById('weeklyTrendDetails');
+        if (weeklyTrend && weeklyTrendDetails) {
+            const totalActiveTime = this.activityStats.dailyActive + 
+                (this.activityStats.isActive ? this.activityStats.sessionTime : 0);
+            weeklyTrend.textContent = this.formatDuration(totalActiveTime);
+            weeklyTrendDetails.textContent = 'Active time today';
+        }
+
+        // Efficiency (logged vs active)
+        const weeklyAccuracy = document.getElementById('weeklyAccuracy');
+        const weeklyAccuracyDetails = document.getElementById('weeklyAccuracyDetails');
+        if (weeklyAccuracy && weeklyAccuracyDetails) {
+            const totalActiveTime = this.activityStats.dailyActive + 
+                (this.activityStats.isActive ? this.activityStats.sessionTime : 0);
+            const loggedMs = this.getTodayLoggedTime();
+            const efficiency = totalActiveTime > 0 ? Math.round((loggedMs / totalActiveTime) * 100) : 0;
+            weeklyAccuracy.textContent = `${Math.min(efficiency, 100)}%`;
+            weeklyAccuracyDetails.textContent = 'Logged vs. active';
+        }
+
+        console.log('📊 Weekly insights updated');
     }
 }
 
@@ -1708,7 +3466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const statusLabel = document.getElementById('statusLabel');
         if (statusLabel) statusLabel.textContent = 'Initializing...';
         
-        controller = new DesktopProgressController();
+    controller = new DesktopProgressController();
         
         console.log('Controller initialized successfully');
     } catch (error) {

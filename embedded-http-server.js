@@ -201,6 +201,109 @@ export function startEmbeddedServer() {
         }
       }
 
+      // AI Planning function
+      async function generateAIPlan(project, goals, workPattern, workingDays, apiKey) {
+        const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const selectedDays = workingDays.map(day => dayNames[day]).join(', ');
+        
+        const prompt = `You are an AI project planning assistant. I need you to create a detailed weekly work plan for a software development project.
+
+PROJECT: ${project}
+WEEKLY GOALS: ${goals}
+WORK PATTERN: ${workPattern} hours per day
+WORKING DAYS: ${selectedDays}
+
+Please analyze the goals and create a realistic weekly plan with specific, actionable tasks. Each task should:
+1. Be directly related to achieving the stated goals
+2. Have a realistic time estimate (0.5h to 3h chunks)
+3. Be scheduled with appropriate breaks between longer tasks
+4. Build logically on previous tasks
+
+For each working day, provide 2-4 tasks that add up to ${workPattern} hours total. Tasks should be:
+- Specific and actionable (not vague like "work on feature")
+- Technically realistic for software development
+- Properly sequenced (research before implementation, testing after coding, etc.)
+- Include variety (coding, testing, documentation, planning, etc.)
+
+Return your response as a JSON object with this exact structure:
+{
+  "project": "${project}",
+  "totalHours": ${workingDays.length * workPattern},
+  "totalDays": ${workingDays.length},
+  "workPattern": ${workPattern},
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Specific task title",
+      "hours": 2.5,
+      "dayName": "Monday",
+      "date": "2024-01-15",
+      "startTime": "09:00",
+      "endTime": "11:30",
+      "description": "Detailed description of what this task involves"
+    }
+  ]
+}
+
+Calculate dates for the current week starting from Monday. Include realistic start/end times with breaks. Make sure tasks are genuinely relevant to the stated goals and technically sound.`;
+
+        try {
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: 'claude-3-5-sonnet-20241022',
+              max_tokens: 4000,
+              messages: [
+                {
+                  role: 'user',
+                  content: prompt
+                }
+              ]
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Anthropic API error: ${response.status} - ${errorData}`);
+          }
+
+          const data = await response.json();
+          const content = data.content[0].text;
+          
+          // Extract JSON from the response
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('No valid JSON found in AI response');
+          }
+          
+          const plan = JSON.parse(jsonMatch[0]);
+          
+          // Add proper dates for current week
+          const currentDate = new Date();
+          const startOfWeek = new Date(currentDate);
+          startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Start from Monday
+          
+          plan.tasks.forEach((task, index) => {
+            const dayIndex = workingDays[Math.floor(index / Math.ceil(plan.tasks.length / workingDays.length))];
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + dayIndex - 1);
+            task.date = date.toISOString().split('T')[0];
+          });
+          
+          log(`AI plan generated successfully with ${plan.tasks.length} tasks`);
+          return plan;
+          
+        } catch (error) {
+          log(`Error calling Anthropic API: ${error.message}`);
+          throw new Error(`Failed to generate AI plan: ${error.message}`);
+        }
+      }
+
       // API Routes
       app.post('/add-progress', async (req, res) => {
         try {
@@ -245,6 +348,37 @@ export function startEmbeddedServer() {
         }
       });
 
+      // AI Planning endpoint
+      app.post('/generate-plan', async (req, res) => {
+        try {
+          const { project, goals, workPattern, workingDays } = req.body;
+          
+          if (!project || !goals || !workPattern || !workingDays) {
+            return res.status(400).json({ 
+              error: 'Missing required fields: project, goals, workPattern, workingDays' 
+            });
+          }
+
+          if (!apiKey) {
+            return res.status(500).json({ 
+              error: 'ANTHROPIC_API_KEY environment variable not set' 
+            });
+          }
+
+          log(`Generating AI plan for project: ${project}`);
+          
+          const plan = await generateAIPlan(project, goals, workPattern, workingDays, apiKey);
+          
+          res.json({
+            success: true,
+            plan: plan
+          });
+        } catch (error) {
+          log(`Error generating AI plan: ${error.message}`);
+          res.status(500).json({ error: error.message });
+        }
+      });
+
       app.get('/health', (req, res) => {
         res.json({ 
           status: 'ok', 
@@ -261,6 +395,7 @@ export function startEmbeddedServer() {
         log('Available endpoints:');
         log('  POST /add-progress - Add a progress item');
         log('  GET /progress-report - Get progress items');
+        log('  POST /generate-plan - Generate AI weekly plan');
         log('  GET /health - Health check');
         resolve();
       });

@@ -15,9 +15,13 @@
     "http-server": "node http-mcp-server.js"
   },
   "dependencies": {
+    "@hurdlegroup/robotjs": "^0.12.3",
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@paymoapp/real-idle": "^1.1.1",
+    "active-win": "^8.0.0",
     "airtable": "^0.12.2",
     "cors": "^2.8.5",
+    "desktop-idle": "^1.3.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2",
@@ -35,6 +39,7 @@
     },
     "files": [
       "main.js",
+      "activity-monitor.js",
       "renderer/**/*",
       "assets/**/*",
       "mcp-server.js",
