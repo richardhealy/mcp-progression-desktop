@@ -1489,6 +1489,9 @@ class DesktopProgressController {
                 // Update breakdown with latest data
                 this.updateActivityBreakdown();
                 
+                // Fill in any missing segments based on current state
+                this.fillMissingSegments();
+                
                 console.log('📊 Real-time data saved and updated');
             }
         }, 60000); // Every minute
@@ -1497,6 +1500,8 @@ class DesktopProgressController {
         setInterval(() => {
             if (this.uiReady) {
                 this.refreshTimelineDisplay();
+                // Also update current segment state based on time since last activity
+                this.updateCurrentSegmentState();
             }
         }, 10000); // Every 10 seconds
         
@@ -3771,6 +3776,115 @@ class DesktopProgressController {
                 const segmentKey = this.getSegmentKey(segment);
                 const state = this.realTimelineData.get(segmentKey) || 'no-data';
                 segmentDiv.className = `timeline-segment ${state}`;
+            }
+        }
+    }
+
+    updateCurrentSegmentState() {
+        // Update the current segment based on time since last activity
+        const currentSegment = this.getCurrentSegment();
+        const segmentKey = this.getSegmentKey(currentSegment);
+        const now = Date.now();
+        const timeSinceActivity = now - this.lastActivityTime;
+        
+        // Define time thresholds
+        const tenSeconds = 10 * 1000;
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        let currentState = 'no-data';
+        
+        // Determine current state based on time since last activity
+        if (timeSinceActivity < tenSeconds) {
+            currentState = 'active';
+        } else if (timeSinceActivity < fiveMinutes) {
+            currentState = 'idle';
+        } else {
+            currentState = 'inactive';
+        }
+        
+        // Always update the current segment (it might be a new segment)
+        const existingState = this.realTimelineData.get(segmentKey);
+        
+        // Store the new state
+        this.realTimelineData.set(segmentKey, currentState);
+        
+        // Update the visual segment
+        const segment = document.querySelector(`[data-segment="${currentSegment}"]`);
+        if (segment) {
+            segment.className = `timeline-segment ${currentState}`;
+        }
+        
+        // Save data if state changed
+        if (existingState !== currentState) {
+            this.saveRealTimelineData();
+            console.log(`📊 Current segment ${currentSegment} updated: ${existingState || 'no-data'} -> ${currentState} (${Math.round(timeSinceActivity/1000)}s since activity)`);
+        }
+        
+        // Also update the activity state if needed
+        if (this.activityState !== currentState) {
+            this.activityState = currentState;
+            this.updateStatusDisplay();
+            
+            // Update breakdown when state changes
+            this.updateActivityBreakdown();
+        }
+    }
+
+    fillMissingSegments() {
+        // Fill in segments that might have been missed during periods of inactivity
+        const currentSegment = this.getCurrentSegment();
+        const now = Date.now();
+        const timeSinceActivity = now - this.lastActivityTime;
+        
+        // Define time thresholds
+        const tenSeconds = 10 * 1000;
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        // Determine what state recent segments should be
+        let stateToFill;
+        if (timeSinceActivity < tenSeconds) {
+            stateToFill = 'active';
+        } else if (timeSinceActivity < fiveMinutes) {
+            stateToFill = 'idle';
+        } else {
+            stateToFill = 'inactive';
+        }
+        
+        // Look back at the last few segments to fill any gaps
+        const segmentsToCheck = Math.min(6, currentSegment + 1); // Check last hour or from start
+        for (let i = Math.max(0, currentSegment - segmentsToCheck + 1); i <= currentSegment; i++) {
+            const segmentKey = this.getSegmentKey(i);
+            
+            // If segment has no data, fill it based on when it would have occurred
+            if (!this.realTimelineData.has(segmentKey)) {
+                // Calculate when this segment occurred
+                const segmentStartTime = new Date();
+                segmentStartTime.setHours(0, 0, 0, 0); // Start of day
+                segmentStartTime.setMinutes(i * 10); // Add segment minutes
+                
+                const segmentTime = segmentStartTime.getTime();
+                const timeSinceSegment = now - segmentTime;
+                const timeSinceActivityAtSegment = Math.max(0, timeSinceActivity - (now - segmentTime));
+                
+                let segmentState;
+                if (timeSinceActivityAtSegment < tenSeconds) {
+                    segmentState = 'active';
+                } else if (timeSinceActivityAtSegment < fiveMinutes) {
+                    segmentState = 'idle';
+                } else {
+                    segmentState = 'inactive';
+                }
+                
+                // Only fill recent segments (within last 30 minutes)
+                if (timeSinceSegment < 30 * 60 * 1000) {
+                    this.realTimelineData.set(segmentKey, segmentState);
+                    
+                    // Update visual
+                    const segment = document.querySelector(`[data-segment="${i}"]`);
+                    if (segment) {
+                        segment.className = `timeline-segment ${segmentState}`;
+                    }
+                }
             }
         }
     }
