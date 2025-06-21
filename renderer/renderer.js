@@ -54,6 +54,9 @@ class DesktopProgressController {
             console.log('Starting activity state updates...');
             this.startActivityStateUpdates();
             
+            console.log('Starting real-time data updates...');
+            this.startRealTimeUpdates();
+            
             console.log('Loading server status...');
             await this.loadServerStatus();
             
@@ -449,6 +452,11 @@ class DesktopProgressController {
             
             // Update activity overview stats when native activity is detected
             this.updateActivityOverviewFromNativeActivity(data);
+            
+            // Update timeline and chart with real activity data
+            this.updateActivityTimeline(data);
+            this.updateActivityChart(data);
+            this.updateActivityBreakdown();
         });
 
         window.electronAPI.onActivityStatusChanged((event, data) => {
@@ -457,6 +465,11 @@ class DesktopProgressController {
             
             // Update activity overview when status changes
             this.updateActivityOverviewFromStatusChange(data);
+            
+            // Update timeline and chart when status changes
+            this.updateActivityTimeline(data);
+            this.updateActivityChart(data);
+            this.updateActivityBreakdown();
         });
     }
 
@@ -1463,6 +1476,31 @@ class DesktopProgressController {
                 this.refreshActivityStats();
             }
         }, 60000); // Every minute
+    }
+
+    startRealTimeUpdates() {
+        // Update timeline and chart data every minute
+        setInterval(() => {
+            if (this.uiReady) {
+                // Save current timeline data
+                this.saveRealTimelineData();
+                this.saveChartData();
+                
+                // Update breakdown with latest data
+                this.updateActivityBreakdown();
+                
+                console.log('📊 Real-time data saved and updated');
+            }
+        }, 60000); // Every minute
+        
+        // Refresh timeline display every 10 seconds to show current segment
+        setInterval(() => {
+            if (this.uiReady) {
+                this.refreshTimelineDisplay();
+            }
+        }, 10000); // Every 10 seconds
+        
+        console.log('📊 Real-time updates started');
     }
 
     updateCurrentTimeDisplay() {
@@ -2787,28 +2825,69 @@ class DesktopProgressController {
         const focusSessions = document.getElementById('focusSessions');
         const peakActivity = document.getElementById('peakActivity');
 
-        // Calculate periods (simplified - in real implementation, you'd track session changes)
-        const totalActive = this.activityStats.dailyActive / 1000; // Convert to seconds
-        const totalIdle = this.activityStats.dailyIdle / 1000;
+        // Calculate real periods from timeline data
+        let activeCount = 0;
+        let idleCount = 0;
+        let inactiveCount = 0;
+        let peakHour = 0;
+        let maxActivityInHour = 0;
         
+        // Count activity states from timeline data
+        this.realTimelineData.forEach((state, segmentKey) => {
+            switch (state) {
+                case 'active':
+                    activeCount++;
+                    break;
+                case 'idle':
+                    idleCount++;
+                    break;
+                case 'inactive':
+                    inactiveCount++;
+                    break;
+            }
+        });
+        
+        // Find peak activity hour from chart data
+        if (this.activityChart && this.activityChart.data.datasets[0].data) {
+            this.activityChart.data.datasets[0].data.forEach((minutes, hourIndex) => {
+                if (minutes > maxActivityInHour) {
+                    maxActivityInHour = minutes;
+                    peakHour = hourIndex;
+                }
+            });
+        }
+        
+        // Update UI with real data
         if (activePeriods) {
-            activePeriods.textContent = Math.ceil(totalActive / 1800); // Assume 30-min active periods
+            // Each segment is 10 minutes, so convert to periods
+            const activeMinutes = activeCount * 10;
+            const activePeriodCount = Math.ceil(activeMinutes / 30); // 30-min periods
+            activePeriods.textContent = activePeriodCount;
         }
 
         if (idlePeriods) {
-            idlePeriods.textContent = Math.ceil(totalIdle / 900); // Assume 15-min idle periods
+            const idleMinutes = idleCount * 10;
+            const idlePeriodCount = Math.ceil(idleMinutes / 15); // 15-min periods
+            idlePeriods.textContent = idlePeriodCount;
         }
 
         if (focusSessions) {
-            focusSessions.textContent = Math.floor(totalActive / 3600); // 1-hour focus sessions
+            const activeMinutes = activeCount * 10;
+            const focusSessionCount = Math.floor(activeMinutes / 60); // 1-hour sessions
+            focusSessions.textContent = focusSessionCount;
         }
 
         if (peakActivity) {
-            // Show current hour as peak for demo
-            const now = new Date();
-            const hour = now.getHours();
-            peakActivity.textContent = `${hour.toString().padStart(2, '0')}:00`;
+            if (maxActivityInHour > 0) {
+                peakActivity.textContent = `${peakHour.toString().padStart(2, '0')}:00`;
+            } else {
+                const now = new Date();
+                const currentHour = now.getHours();
+                peakActivity.textContent = `${currentHour.toString().padStart(2, '0')}:00`;
+            }
         }
+        
+        console.log(`📊 Breakdown updated: ${activeCount} active, ${idleCount} idle, ${inactiveCount} inactive segments`);
     }
 
     formatDuration(milliseconds) {
@@ -3566,26 +3645,45 @@ class DesktopProgressController {
     }
 
     loadTodayActivityData() {
-        // For now, add some sample data to test the chart
-        // In a real implementation, this would load from stored activity data
-        const now = new Date();
-        const currentHour = now.getHours();
+        // Load real activity data from localStorage for today's chart
+        const today = new Date().toDateString();
+        const storedChartData = localStorage.getItem(`activityChart_${today}`);
         
-        // Add some sample activity data for the past few hours
-        for (let i = Math.max(0, currentHour - 8); i <= currentHour; i++) {
-            const hourIndex = this.activityChart.data.labels.findIndex(label => {
-                return label === i.toString().padStart(2, '0') + ':00';
-            });
-            
-            if (hourIndex !== -1) {
-                // Add random activity between 0-45 minutes per hour
-                const activityMinutes = Math.floor(Math.random() * 45);
-                this.activityChart.data.datasets[0].data[hourIndex] = activityMinutes;
+        if (storedChartData && this.activityChart) {
+            try {
+                const chartData = JSON.parse(storedChartData);
+                this.activityChart.data.datasets[0].data = chartData;
+                this.activityChart.update();
+                console.log('📊 Real activity chart data loaded from storage');
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                this.initializeEmptyChartData();
+            }
+        } else {
+            this.initializeEmptyChartData();
+        }
+    }
+
+    initializeEmptyChartData() {
+        // Initialize with zeros for all hours
+        if (this.activityChart) {
+            this.activityChart.data.datasets[0].data = new Array(24).fill(0);
+            this.activityChart.update();
+            console.log('📊 Initialized empty chart data');
+        }
+    }
+
+    saveChartData() {
+        // Save current chart data to localStorage
+        if (this.activityChart) {
+            const today = new Date().toDateString();
+            try {
+                const chartData = this.activityChart.data.datasets[0].data;
+                localStorage.setItem(`activityChart_${today}`, JSON.stringify(chartData));
+            } catch (error) {
+                console.error('Error saving chart data:', error);
             }
         }
-        
-        this.activityChart.update();
-        console.log('📊 Sample activity data loaded for testing');
     }
 
     // Activity Timeline Methods - Now with minute-level granularity using real data
@@ -3837,16 +3935,25 @@ class DesktopProgressController {
             return label === currentHour.toString().padStart(2, '0') + ':00';
         });
 
-        if (hourIndex !== -1 && activityData.isActive) {
-            // Add activity time to current hour (convert session time from ms to minutes)
-            const sessionMinutes = Math.round(activityData.sessionTime / (1000 * 60));
+        if (hourIndex !== -1) {
             const currentValue = this.activityChart.data.datasets[0].data[hourIndex] || 0;
             
-            // Update with incremental activity (prevent huge jumps)
-            const increment = Math.min(sessionMinutes - currentValue, 5); // Max 5 minutes increment per update
-            if (increment > 0) {
-                this.activityChart.data.datasets[0].data[hourIndex] = currentValue + increment;
+            // Determine if we should add activity time
+            let shouldIncrement = false;
+            
+            if (activityData.isActive || activityData.status === 'active') {
+                shouldIncrement = true;
+            } else if (activityData.sessionTime && activityData.sessionTime > 0) {
+                shouldIncrement = true;
+            }
+            
+            if (shouldIncrement) {
+                // Add 1 minute of activity (real-time increment)
+                this.activityChart.data.datasets[0].data[hourIndex] = currentValue + 1;
                 this.activityChart.update('none'); // Update without animation for real-time feel
+                
+                // Save chart data to localStorage
+                this.saveChartData();
                 
                 console.log(`📊 Chart updated: Hour ${currentHour} now has ${this.activityChart.data.datasets[0].data[hourIndex]} minutes of activity`);
             }
