@@ -1448,25 +1448,34 @@ class DesktopProgressController {
             const tenSeconds = 10 * 1000;
             const fiveMinutes = 5 * 60 * 1000;
             
+            console.log(`🔄 State check: Current=${this.activityState}, TimeSinceActivity=${Math.round(timeSinceActivity/1000)}s, LastActivity=${new Date(this.lastActivityTime).toLocaleTimeString()}`);
+            
             let stateChanged = false;
+            let newState = this.activityState;
             
             // Transition from active to idle after 10 seconds
             if (this.activityState === 'active' && timeSinceActivity >= tenSeconds) {
-                console.log('Transitioning from active to idle after 10 seconds');
-                this.activityState = 'idle';
+                console.log('🔄 Transitioning from active to idle after 10 seconds');
+                newState = 'idle';
                 stateChanged = true;
             }
             
             // Transition from idle to inactive after 5 minutes
             if (this.activityState === 'idle' && timeSinceActivity >= fiveMinutes) {
-                console.log('Transitioning from idle to inactive after 5 minutes');
-                this.activityState = 'inactive';
+                console.log('🔄 Transitioning from idle to inactive after 5 minutes');
+                newState = 'inactive';
                 stateChanged = true;
             }
             
-            // Update UI if state changed
+            // Update state and UI if changed
             if (stateChanged) {
+                this.activityState = newState;
                 this.updateStatusDisplay();
+                
+                // Also update timeline with new state
+                this.updateCurrentSegmentState();
+                
+                console.log(`✅ State changed to: ${newState}`);
             }
         }, 10000); // Check every 10 seconds
         
@@ -3352,8 +3361,12 @@ class DesktopProgressController {
         }
 
         // Mark as active and update the status display
+        const oldLastActivityTime = this.lastActivityTime;
         this.lastActivityTime = Date.now();
         this.activityState = 'active';
+        
+        console.log(`🎯 Native activity detected - lastActivityTime updated from ${new Date(oldLastActivityTime).toLocaleTimeString()} to ${new Date(this.lastActivityTime).toLocaleTimeString()}`);
+        
         this.updateStatusDisplay();
 
         // Add visual feedback
@@ -3371,8 +3384,11 @@ class DesktopProgressController {
         
         // Always update last activity time when any activity is detected
         if (data.isActive) {
+            const oldLastActivityTime = this.lastActivityTime;
             this.lastActivityTime = now;
             this.activityState = 'active';
+            
+            console.log(`🎯 Activity status update - lastActivityTime updated from ${new Date(oldLastActivityTime).toLocaleTimeString()} to ${new Date(this.lastActivityTime).toLocaleTimeString()}`);
         }
         // Note: idle and inactive state transitions are handled by the periodic timer
         // This prevents rapid state changes when the native monitor sends brief idle signals
@@ -3820,12 +3836,12 @@ class DesktopProgressController {
             console.log(`📊 Current segment ${currentSegment} updated: ${existingState || 'no-data'} -> ${currentState} (${Math.round(timeSinceActivity/1000)}s since activity)`);
         }
         
-        // Also update the activity state if needed
-        if (this.activityState !== currentState) {
-            this.activityState = currentState;
-            this.updateStatusDisplay();
-            
-            // Update breakdown when state changes
+        // Don't override the main activity state here - let the main state timer handle it
+        // This function only updates the timeline segments
+        console.log(`📊 Timeline segment ${currentSegment} state: ${currentState} (main state: ${this.activityState})`);
+        
+        // Only update breakdown when segment state changes
+        if (existingState !== currentState) {
             this.updateActivityBreakdown();
         }
     }
