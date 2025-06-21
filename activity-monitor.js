@@ -46,6 +46,13 @@ class HybridActivityMonitor extends EventEmitter {
     this.sessionStartTime = null;
     this.lastMousePos = { x: 0, y: 0 };
     
+    // Permission state caching
+    this.permissionsChecked = false;
+    this.permissionsResult = null;
+    this.permissionCheckInProgress = false;
+    this.permissionsGranted = false;
+    this.permissionsDenied = false; // Explicit flag to track denial
+    
     this.initializeLibraries();
   }
 
@@ -102,43 +109,55 @@ class HybridActivityMonitor extends EventEmitter {
   async start() {
     console.log('🚀 Starting Hybrid Activity Monitor...');
     
-    // Wait a bit for libraries to finish loading if they're still initializing
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait a bit for libraries to finish loading and app to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check permissions ONCE at startup
+    console.log('🔐 Performing ONE-TIME permission check at startup...');
+    const permissions = await this.checkPermissions();
     
     let hasActiveTracking = false;
     
+    if (this.permissionsGranted) {
+      console.log('✅ Permissions granted, starting native tracking...');
+    
     // Start different tracking methods based on available libraries
+      // These will now run WITHOUT permission checks since we verified them once
     if (this.desktopIdle || this.realIdle) {
-      this.startIdleTracking();
-      hasActiveTracking = true;
-      console.log('📊 Idle tracking started');
+        this.startIdleTrackingWithPermissions();
+        hasActiveTracking = true;
+        console.log('📊 Idle tracking started (permissions verified)');
     }
     
     if (this.activeWin) {
-      this.startWindowTracking();
-      hasActiveTracking = true;
-      console.log('🪟 Window tracking started');
+        this.startWindowTrackingWithPermissions();
+        hasActiveTracking = true;
+        console.log('🪟 Window tracking started (permissions verified)');
     }
     
     if (this.robot) {
-      this.startMouseTracking();
-      if (this.options.trackKeyboard) {
-        this.startKeyboardTracking();
-        console.log('⌨️ Keyboard tracking started');
+        this.startMouseTrackingWithPermissions();
+        if (this.options.trackKeyboard) {
+          this.startKeyboardTracking();
+          console.log('⌨️ Keyboard tracking started (permissions verified)');
+        }
+        hasActiveTracking = true;
+        console.log('🖱️ Mouse tracking started (permissions verified)');
       }
-      hasActiveTracking = true;
-      console.log('🖱️ Mouse tracking started');
+    } else {
+      console.log('❌ Permissions not granted, using fallback tracking only');
     }
     
-    // Fallback: Basic activity simulation if no libraries available
+    // Fallback: Basic activity simulation if no libraries available or no permissions
     if (!hasActiveTracking) {
-      console.log('⚠️ No native libraries available, using fallback tracking');
+      console.log('⚠️ Using fallback tracking (no native libraries or permissions)');
       this.startFallbackTracking();
     } else {
       console.log('✅ Native activity tracking active with', {
         idle: !!(this.desktopIdle || this.realIdle),
         window: !!this.activeWin,
-        mouse: !!this.robot
+        mouse: !!this.robot,
+        permissions: permissions.overall
       });
     }
     
@@ -148,8 +167,8 @@ class HybridActivityMonitor extends EventEmitter {
     this.startStatusUpdates();
   }
 
-  startIdleTracking() {
-    console.log('📊 Starting system-wide idle time tracking...');
+  startIdleTrackingWithPermissions() {
+    console.log('📊 Starting system-wide idle time tracking (permissions already verified)...');
     
     this.idleCheckInterval = setInterval(() => {
       try {
@@ -213,8 +232,8 @@ class HybridActivityMonitor extends EventEmitter {
     }, 1000);
   }
 
-  startWindowTracking() {
-    console.log('🪟 Starting window tracking...');
+  startWindowTrackingWithPermissions() {
+    console.log('🪟 Starting window tracking (permissions already verified)...');
     
     this.windowTrackingInterval = setInterval(async () => {
       try {
@@ -259,8 +278,8 @@ class HybridActivityMonitor extends EventEmitter {
     }, 2000);
   }
 
-  startMouseTracking() {
-    console.log('🖱️ Starting mouse tracking...');
+  startMouseTrackingWithPermissions() {
+    console.log('🖱️ Starting mouse tracking (permissions already verified)...');
     
     this.activityCheckInterval = setInterval(() => {
       try {
@@ -298,78 +317,24 @@ class HybridActivityMonitor extends EventEmitter {
   }
 
   startKeyboardTracking() {
-    console.log('⌨️ Starting keyboard tracking...');
+    console.log('⌨️ Keyboard tracking initialized (real tracking - no simulation)');
     
-    // Simulate keyboard activity tracking for demonstration
-    // In a real implementation, this would use global keyboard hooks
-    this.keyboardCheckInterval = setInterval(() => {
-      try {
-        // Simulate keypress detection based on general activity
-        // When the user is active, randomly add keypresses to simulate typing
-        if (this.isActive && Math.random() < 0.3) { // 30% chance per check when active
-          const keyIncrement = Math.floor(Math.random() * 3) + 1; // 1-3 keys
-          this.stats.keyPresses += keyIncrement;
-          
-          this.emit('keyboard-activity', {
-            totalKeyPresses: this.stats.keyPresses
-          });
-          
-          console.log(`⌨️ Simulated ${keyIncrement} keypresses - Total: ${this.stats.keyPresses}`);
-        }
-      } catch (error) {
-        console.error('Error in keyboard tracking simulation:', error);
-      }
-    }, 2000); // Check every 2 seconds
+    // Real keyboard tracking would be implemented here using global keyboard hooks
+    // For now, we rely on the system-level activity detection instead of simulating fake data
+    
+    // Initialize keyboard stats
+    this.stats.keyPresses = 0;
+    
+    console.log('⌨️ Keyboard tracking started (real activity only)');
   }
 
   startFallbackTracking() {
-    console.log('🔄 Starting fallback activity tracking...');
+    console.log('🔄 Fallback tracking disabled - no simulation will be performed');
     
-    // Simulate activity for demo purposes
-    this.activityCheckInterval = setInterval(() => {
-      const now = Date.now();
-      const timeSinceActivity = now - this.lastActivity;
-      
-      // Simulate random activity every 10-30 seconds
-      if (Math.random() < 0.1) {
-        this.lastActivity = now;
-        this.stats.mouseMovements++;
-        
-        if (!this.isActive) {
-          const previousState = this.isActive;
-          this.isActive = true;
-          
-          // Emit activity-changed event
-          this.emit('activity-changed', {
-            isActive: this.isActive,
-            previousState,
-            timestamp: Date.now()
-          });
-          
-          this.handleActivityStart();
-        }
-        
-        this.emit('simulated-activity', {
-          type: 'mouse',
-          totalMovements: this.stats.mouseMovements
-        });
-      }
-      
-      // Go inactive after 30 seconds of no activity
-      if (this.isActive && timeSinceActivity > 30000) {
-        const previousState = this.isActive;
-        this.isActive = false;
-        
-        // Emit activity-changed event
-        this.emit('activity-changed', {
-          isActive: this.isActive,
-          previousState,
-          timestamp: Date.now()
-        });
-        
-        this.handleActivityEnd();
-      }
-    }, 2000);
+    // Fallback tracking has been disabled to prevent false activity data
+    // The system now relies on real activity detection only
+    
+    console.log('✅ Real activity tracking mode enabled - no fake data generated');
   }
 
   handleActivityStart() {
@@ -397,6 +362,27 @@ class HybridActivityMonitor extends EventEmitter {
   }
 
   async checkPermissions() {
+    // Return cached result if available
+    if (this.permissionsChecked && this.permissionsResult) {
+      return this.permissionsResult;
+    }
+    
+    // Prevent multiple simultaneous permission checks
+    if (this.permissionCheckInProgress) {
+      console.log('⏳ Permission check already in progress, waiting...');
+      return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!this.permissionCheckInProgress && this.permissionsResult) {
+            clearInterval(checkInterval);
+            resolve(this.permissionsResult);
+          }
+        }, 100);
+      });
+    }
+    
+    this.permissionCheckInProgress = true;
+    console.log('🔐 Checking native library permissions...');
+    
     const permissions = {
       activeWin: false,
       desktopIdle: false,
@@ -405,13 +391,14 @@ class HybridActivityMonitor extends EventEmitter {
       overall: 'available'
     };
     
-    // Test active-win
+    // Test active-win (least invasive first)
     if (this.activeWin) {
       try {
         await this.activeWin();
         permissions.activeWin = true;
+        console.log('✅ Active-win permissions OK');
       } catch (error) {
-        console.log('Active-win permission issue:', error.message);
+        console.log('❌ Active-win permission issue:', error.message);
       }
     }
     
@@ -420,8 +407,9 @@ class HybridActivityMonitor extends EventEmitter {
       try {
         this.desktopIdle.getIdleTime();
         permissions.desktopIdle = true;
+        console.log('✅ Desktop-idle permissions OK');
       } catch (error) {
-        console.log('Desktop-idle permission issue:', error.message);
+        console.log('❌ Desktop-idle permission issue:', error.message);
       }
     }
     
@@ -430,19 +418,37 @@ class HybridActivityMonitor extends EventEmitter {
       try {
         this.realIdle.getIdleSeconds();
         permissions.realIdle = true;
+        console.log('✅ Real-idle permissions OK');
       } catch (error) {
-        console.log('Real-idle permission issue:', error.message);
+        console.log('❌ Real-idle permission issue:', error.message);
       }
     }
     
-    // Test robotjs
+    // Test robotjs (most likely to trigger permission dialog)
     if (this.robot) {
       try {
         const pos = this.robot.getMousePos();
         permissions.robotjs = true;
-        console.log('RobotJS permissions OK, mouse at:', pos);
+        console.log('✅ RobotJS permissions OK, mouse at:', pos);
       } catch (error) {
-        console.log('RobotJS permission issue:', error.message);
+        console.log('❌ RobotJS permission issue:', error.message);
+        // If this is a permission error, mark as denied and disable all native tracking
+        if (error.message.includes('permission') || error.message.includes('accessibility') || error.message.includes('denied')) {
+          console.log('🚫 Accessibility permissions denied - disabling all native tracking');
+          this.permissionsDenied = true;
+          this.permissionsGranted = false;
+          
+          // Immediately disable all libraries
+          this.robot = null;
+          this.activeWin = null;
+          this.desktopIdle = null;
+          this.realIdle = null;
+          
+          permissions.activeWin = false;
+          permissions.desktopIdle = false;
+          permissions.realIdle = false;
+          permissions.robotjs = false;
+        }
       }
     }
     
@@ -458,6 +464,14 @@ class HybridActivityMonitor extends EventEmitter {
       permissions.overall = 'full';
     }
     
+    // Cache the result
+    this.permissionsResult = permissions;
+    this.permissionsChecked = true;
+    this.permissionCheckInProgress = false;
+    this.permissionsGranted = permissions.overall !== 'none';
+    
+    console.log('🔐 Permission check complete:', permissions);
+    console.log('🔐 Permissions granted:', this.permissionsGranted);
     return permissions;
   }
 
@@ -497,8 +511,8 @@ class HybridActivityMonitor extends EventEmitter {
   }
 
   simulateActivity() {
-    this.recordActivity('simulated');
-    this.stats.mouseMovements++;
+    // Simulation disabled to prevent false activity data
+    console.log('⚠️ simulateActivity() called but disabled - no fake data will be generated');
   }
 
   getActivityStatus() {
@@ -517,6 +531,45 @@ class HybridActivityMonitor extends EventEmitter {
     };
     
     this.emit('stats-reset');
+  }
+
+  // Method to handle permission denial and stop all native calls
+  handlePermissionDenial(source) {
+    console.log(`🚫 Permission denied for ${source} - disabling all native tracking`);
+    this.permissionsGranted = false;
+    this.permissionsDenied = true;
+    
+    // Stop all intervals to prevent further permission requests
+    if (this.idleCheckInterval) {
+      clearInterval(this.idleCheckInterval);
+      this.idleCheckInterval = null;
+    }
+    
+    if (this.windowTrackingInterval) {
+      clearInterval(this.windowTrackingInterval);
+      this.windowTrackingInterval = null;
+    }
+    
+    if (this.activityCheckInterval) {
+      clearInterval(this.activityCheckInterval);
+      this.activityCheckInterval = null;
+    }
+    
+    // Completely disable native libraries to prevent any future calls
+    this.robot = null;
+    this.activeWin = null;
+    this.desktopIdle = null;
+    this.realIdle = null;
+    
+    console.log('🚫 All native libraries disabled due to permission denial');
+    
+    // Start fallback tracking if not already running
+    if (!this.activityCheckInterval) {
+      console.log('🔄 Starting fallback tracking due to permission denial');
+      this.startFallbackTracking();
+    }
+    
+    this.emit('permissions-denied', { source });
   }
 
   startStatusUpdates() {

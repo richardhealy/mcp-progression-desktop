@@ -46,13 +46,21 @@
       "http-mcp-server.js",
       "embedded-http-server.js",
       ".env",
+      "build/**/*",
       "node_modules/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.png",
       "target": "dmg",
-      "identity": null
+      "identity": null,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "hardenedRuntime": true,
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "MCP Progress Tracker needs accessibility permissions to monitor your activity and track work progress automatically. This helps provide accurate time tracking for your projects.",
+        "NSSystemAdministrationUsageDescription": "MCP Progress Tracker needs system administration access to monitor system activity for accurate time tracking."
+      }
     },
     "win": {
       "target": "nsis",

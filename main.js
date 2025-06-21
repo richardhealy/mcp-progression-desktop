@@ -986,6 +986,25 @@ function setupIpcHandlers() {
   });
 }
 
+// Simple permission check function
+async function checkNativePermissions() {
+  console.log('🔐 Checking native permissions in main process...');
+  
+  try {
+    // Try to import and test robotjs (most likely to trigger permission dialog)
+    const robotModule = await import('@hurdlegroup/robotjs');
+    const robot = robotModule.default;
+    
+    // Test if we can get mouse position (requires accessibility permissions)
+    const pos = robot.getMousePos();
+    console.log('✅ Native permissions granted - mouse position:', pos);
+    return true;
+  } catch (error) {
+    console.log('❌ Native permissions denied or not available:', error.message);
+    return false;
+  }
+}
+
 // Copy .env file to userData directory for packaged app
 function ensureEnvFile() {
   try {
@@ -1040,15 +1059,16 @@ app.whenReady().then(async () => {
   // Start activity monitoring
   startActivityMonitoring();
 
-  // Initialize native activity monitor
-  try {
-    console.log('Initializing native activity monitor...');
-    nativeActivityMonitor = new HybridActivityMonitor({
-      idleThreshold: 60000, // 1 minute
-      checkInterval: 5000,  // 5 seconds
-      trackMouse: true,
-      trackKeyboard: true
-    });
+  // Initialize native activity monitor after a delay to prevent immediate permission requests
+  setTimeout(async () => {
+    try {
+      console.log('Initializing native activity monitor...');
+      nativeActivityMonitor = new HybridActivityMonitor({
+        idleThreshold: 60000, // 1 minute
+        checkInterval: 5000,  // 5 seconds
+        trackMouse: true,
+        trackKeyboard: true
+      });
 
     // Set up event listeners
     nativeActivityMonitor.on('activity-changed', (data) => {
@@ -1087,13 +1107,14 @@ app.whenReady().then(async () => {
       }
     });
 
-    // Start the native monitor
-    await nativeActivityMonitor.start();
-    console.log('Native activity monitor started successfully');
-  } catch (error) {
-    console.error('Failed to initialize native activity monitor:', error);
-    console.log('Continuing with basic activity monitoring only');
-  }
+      // Start the native monitor
+      await nativeActivityMonitor.start();
+      console.log('Native activity monitor started successfully');
+    } catch (error) {
+      console.error('Failed to initialize native activity monitor:', error);
+      console.log('Continuing with basic activity monitoring only');
+    }
+  }, 3000); // 3 second delay to allow app to fully initialize
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
