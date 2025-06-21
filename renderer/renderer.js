@@ -1464,6 +1464,11 @@ class DesktopProgressController {
                 // Also update timeline with new state
                 this.updateCurrentSegmentState();
                 
+                // If transitioning to inactive, update recent timeline segments
+                if (newState === 'inactive') {
+                    this.updateTimelineForLongIdle();
+                }
+                
                 console.log(`✅ State changed to: ${newState}`);
             }
         }, 10000); // Check every 10 seconds
@@ -1500,6 +1505,9 @@ class DesktopProgressController {
                 this.refreshTimelineDisplay();
                 // Also update current segment state based on time since last activity
                 this.updateCurrentSegmentState();
+                
+                // Force update timeline segments during long idle periods
+                this.updateTimelineForLongIdle();
             }
         }, 10000); // Every 10 seconds
         
@@ -3817,6 +3825,60 @@ class DesktopProgressController {
             
             // Update breakdown when segment state changes
             this.updateActivityBreakdown();
+        }
+    }
+
+    updateTimelineForLongIdle() {
+        // During long idle periods, update multiple segments to show the progression
+        const currentSegment = this.getCurrentSegment();
+        const now = Date.now();
+        const timeSinceActivity = now - this.lastActivityTime;
+        
+        // If we've been idle/inactive for more than 2 minutes, backfill recent segments
+        if (timeSinceActivity > 2 * 60 * 1000) {
+            const segmentsToUpdate = Math.min(12, currentSegment + 1); // Last 2 hours or from start
+            
+            for (let i = Math.max(0, currentSegment - segmentsToUpdate + 1); i <= currentSegment; i++) {
+                const segmentKey = this.getSegmentKey(i);
+                
+                // Calculate when this segment occurred
+                const segmentStartTime = new Date();
+                segmentStartTime.setHours(0, 0, 0, 0); // Start of day
+                segmentStartTime.setMinutes(i * 10); // Add segment minutes
+                
+                const segmentTime = segmentStartTime.getTime();
+                
+                // Determine state for this segment based on when activity last occurred
+                let segmentState;
+                if (segmentTime > this.lastActivityTime) {
+                    // This segment occurred after last activity
+                    const timeSinceActivityForSegment = segmentTime - this.lastActivityTime;
+                    if (timeSinceActivityForSegment < 5 * 60 * 1000) {
+                        segmentState = 'idle';
+                    } else {
+                        segmentState = 'inactive';
+                    }
+                } else {
+                    // This segment occurred during or before last activity
+                    segmentState = 'active';
+                }
+                
+                // Update if different from stored state
+                const existingState = this.realTimelineData.get(segmentKey);
+                if (existingState !== segmentState) {
+                    this.realTimelineData.set(segmentKey, segmentState);
+                    
+                    // Update visual
+                    const segment = document.querySelector(`[data-segment="${i}"]`);
+                    if (segment) {
+                        segment.className = `timeline-segment ${segmentState}`;
+                    }
+                }
+            }
+            
+            // Save updated data
+            this.saveRealTimelineData();
+            console.log(`📊 Updated ${segmentsToUpdate} timeline segments for long idle period (${Math.round(timeSinceActivity/1000)}s since activity)`);
         }
     }
 
