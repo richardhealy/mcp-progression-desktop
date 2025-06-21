@@ -452,11 +452,6 @@ class DesktopProgressController {
             
             // Update activity overview stats when native activity is detected
             this.updateActivityOverviewFromNativeActivity(data);
-            
-            // Update timeline and chart with real activity data
-            this.updateActivityTimeline(data);
-            this.updateActivityChart(data);
-            this.updateActivityBreakdown();
         });
 
         window.electronAPI.onActivityStatusChanged((event, data) => {
@@ -466,9 +461,9 @@ class DesktopProgressController {
             // Update activity overview when status changes
             this.updateActivityOverviewFromStatusChange(data);
             
-            // Update timeline and chart when status changes
-            this.updateActivityTimeline(data);
-            this.updateActivityChart(data);
+            // Update timeline and chart when status changes - but use the native state
+            this.updateActivityTimeline({ isActive: data.isActive, status: data.isActive ? 'active' : 'inactive' });
+            this.updateActivityChart({ isActive: data.isActive });
             this.updateActivityBreakdown();
         });
     }
@@ -1453,14 +1448,8 @@ class DesktopProgressController {
             let stateChanged = false;
             let newState = this.activityState;
             
-            // Transition from active to idle after 10 seconds
-            if (this.activityState === 'active' && timeSinceActivity >= tenSeconds) {
-                console.log('🔄 Transitioning from active to idle after 10 seconds');
-                newState = 'idle';
-                stateChanged = true;
-            }
-            
-            // Transition from idle to inactive after 5 minutes
+            // Only handle idle → inactive transition here
+            // Active → idle transition is handled by the native activity monitor
             if (this.activityState === 'idle' && timeSinceActivity >= fiveMinutes) {
                 console.log('🔄 Transitioning from idle to inactive after 5 minutes');
                 newState = 'inactive';
@@ -3382,16 +3371,21 @@ class DesktopProgressController {
         
         const now = Date.now();
         
-        // Always update last activity time when any activity is detected
+        // Update activity state based on native monitor
         if (data.isActive) {
             const oldLastActivityTime = this.lastActivityTime;
             this.lastActivityTime = now;
             this.activityState = 'active';
             
-            console.log(`🎯 Activity status update - lastActivityTime updated from ${new Date(oldLastActivityTime).toLocaleTimeString()} to ${new Date(this.lastActivityTime).toLocaleTimeString()}`);
+            console.log(`🎯 Activity status update - ACTIVE - lastActivityTime updated from ${new Date(oldLastActivityTime).toLocaleTimeString()} to ${new Date(this.lastActivityTime).toLocaleTimeString()}`);
+        } else {
+            // When native monitor says inactive, set to idle first (will transition to inactive after 5 min)
+            if (this.activityState === 'active') {
+                this.activityState = 'idle';
+                console.log(`🎯 Activity status update - IDLE - transitioning from active to idle`);
+            }
+            // Don't update lastActivityTime when going inactive - let the timer handle inactive transition
         }
-        // Note: idle and inactive state transitions are handled by the periodic timer
-        // This prevents rapid state changes when the native monitor sends brief idle signals
         
         // Update the UI display
         this.updateStatusDisplay();
@@ -3797,26 +3791,12 @@ class DesktopProgressController {
     }
 
     updateCurrentSegmentState() {
-        // Update the current segment based on time since last activity
+        // Update the current segment based on the MAIN activity state, not time calculations
         const currentSegment = this.getCurrentSegment();
         const segmentKey = this.getSegmentKey(currentSegment);
-        const now = Date.now();
-        const timeSinceActivity = now - this.lastActivityTime;
         
-        // Define time thresholds
-        const tenSeconds = 10 * 1000;
-        const fiveMinutes = 5 * 60 * 1000;
-        
-        let currentState = 'no-data';
-        
-        // Determine current state based on time since last activity
-        if (timeSinceActivity < tenSeconds) {
-            currentState = 'active';
-        } else if (timeSinceActivity < fiveMinutes) {
-            currentState = 'idle';
-        } else {
-            currentState = 'inactive';
-        }
+        // Use the main activity state for timeline segments
+        let currentState = this.activityState || 'no-data';
         
         // Always update the current segment (it might be a new segment)
         const existingState = this.realTimelineData.get(segmentKey);
@@ -3833,15 +3813,9 @@ class DesktopProgressController {
         // Save data if state changed
         if (existingState !== currentState) {
             this.saveRealTimelineData();
-            console.log(`📊 Current segment ${currentSegment} updated: ${existingState || 'no-data'} -> ${currentState} (${Math.round(timeSinceActivity/1000)}s since activity)`);
-        }
-        
-        // Don't override the main activity state here - let the main state timer handle it
-        // This function only updates the timeline segments
-        console.log(`📊 Timeline segment ${currentSegment} state: ${currentState} (main state: ${this.activityState})`);
-        
-        // Only update breakdown when segment state changes
-        if (existingState !== currentState) {
+            console.log(`📊 Current segment ${currentSegment} updated: ${existingState || 'no-data'} -> ${currentState} (using main state: ${this.activityState})`);
+            
+            // Update breakdown when segment state changes
             this.updateActivityBreakdown();
         }
     }
