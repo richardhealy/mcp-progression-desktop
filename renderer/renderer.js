@@ -18,6 +18,10 @@ class DesktopProgressController {
         this.activityState = 'active'; // active, idle, inactive
         this.activitySessionStart = Date.now(); // Track when current activity session started
         this.uiReady = false; // Track if UI is fully initialized
+        this.activityChart = null; // Chart.js instance for activity visualization
+        this.activityChartData = []; // Store activity data for charting
+        this.activityTimelineData = new Array(144).fill('no-data'); // 24 hours * 6 (10-minute segments) = 144 segments
+        this.realTimelineData = new Map(); // Store real activity data by 10-minute segment
         this.init();
     }
 
@@ -121,11 +125,14 @@ class DesktopProgressController {
             }
         });
 
-        // Enable/disable toggle
-        document.getElementById('enabledToggle').addEventListener('change', (e) => {
+        // Enable/disable toggle (removed from progress screen)
+        const enabledToggle = document.getElementById('enabledToggle');
+        if (enabledToggle) {
+            enabledToggle.addEventListener('change', (e) => {
             this.settings.enabled = e.target.checked;
             this.updateStatus();
         });
+        }
 
         // Working days checkboxes
         [0, 1, 2, 3, 4, 5, 6].forEach(day => {
@@ -532,6 +539,7 @@ class DesktopProgressController {
 
         try {
         // Update enabled toggle
+                    // Update enabled toggle if it exists (removed from progress screen)
             const enabledToggle = document.getElementById('enabledToggle');
             if (enabledToggle) {
                 enabledToggle.checked = this.settings.enabled;
@@ -588,6 +596,7 @@ class DesktopProgressController {
     }
 
     updateStatus() {
+        // Status elements removed from progress screen, but may exist in header
         const indicator = document.getElementById('statusIndicator');
         const text = document.getElementById('statusText');
         const statusDot = document.getElementById('statusDot');
@@ -685,12 +694,15 @@ class DesktopProgressController {
     }
 
     updateLastReport() {
+        // Last report element removed from progress screen
         const lastReportEl = document.getElementById('lastReport');
+        if (lastReportEl) {
         if (this.settings.lastReportTime) {
             const lastReport = new Date(this.settings.lastReportTime);
             lastReportEl.textContent = `Last report: ${lastReport.toLocaleString()}`;
         } else {
             lastReportEl.textContent = 'No reports submitted yet';
+            }
         }
     }
 
@@ -743,7 +755,7 @@ class DesktopProgressController {
         try {
             console.log('Gathering settings from form inputs...');
             
-            // Enabled toggle
+            // Enabled toggle (removed from progress screen, keep existing setting)
             const enabledToggle = document.getElementById('enabledToggle');
             if (enabledToggle) {
                 this.settings.enabled = enabledToggle.checked;
@@ -2759,6 +2771,12 @@ class DesktopProgressController {
         // Update breakdown
         this.updateActivityBreakdown();
         
+        // Update activity chart
+        this.updateActivityChart(this.activityStats);
+        
+        // Update activity timeline
+        this.updateActivityTimeline(this.activityStats);
+        
         // Update weekly insights
         this.updateWeeklyInsights();
     }
@@ -2828,7 +2846,7 @@ class DesktopProgressController {
             // Activity Overview is now updated in real-time from native activity events
             // This refresh just updates the UI with current stats
             this.updateActivityUI();
-            this.addLog('Activity stats refreshed', 'success');
+                this.addLog('Activity stats refreshed', 'success');
             console.log('📊 Activity stats refreshed from real-time tracking:', this.activityStats);
         } catch (error) {
             console.error('Error refreshing activity stats:', error);
@@ -2882,6 +2900,12 @@ class DesktopProgressController {
     // Initialize activity monitoring when switching to activity tab
     async initializeActivityTab() {
         try {
+                    // Initialize the activity chart
+        this.initializeActivityChart();
+        
+        // Initialize the activity timeline
+        this.initializeActivityTimeline();
+            
             // Load today's activity stats from native monitor first
             await this.refreshActivityStats();
             
@@ -3177,15 +3201,15 @@ class DesktopProgressController {
         
         // Update stats in real-time when native activity is detected
         if (data.stats) {
-            const mouseMovements = document.getElementById('mouseMovements');
-            if (mouseMovements) {
-                mouseMovements.textContent = data.stats.mouseMovements || 0;
-            }
+                          const mouseMovements = document.getElementById('mouseMovements');
+              if (mouseMovements) {
+                  mouseMovements.textContent = data.stats.mouseMovements || 0;
+              }
 
-            const windowSwitches = document.getElementById('windowSwitches');
-            if (windowSwitches) {
-                windowSwitches.textContent = data.stats.windowSwitches || 0;
-            }
+              const windowSwitches = document.getElementById('windowSwitches');
+              if (windowSwitches) {
+                  windowSwitches.textContent = data.stats.windowSwitches || 0;
+              }
         }
 
         // Update last activity time for native tracking
@@ -3252,7 +3276,7 @@ class DesktopProgressController {
         if (data.type === 'keyboard') {
             this.addLog(`Keyboard activity detected - Total keypresses: ${data.totalKeyPresses || 0}`, 'info');
         } else {
-            this.addLog(`Native activity detected: ${data.type}`, 'info');
+        this.addLog(`Native activity detected: ${data.type}`, 'info');
         }
     }
 
@@ -3271,6 +3295,12 @@ class DesktopProgressController {
         
         // Update the UI display
         this.updateStatusDisplay();
+        
+        // Update timeline with current activity state
+        this.updateActivityTimeline({ isActive: data.isActive });
+        
+        // Record the activity state change
+        this.recordActivityEvent('status_change', data.isActive);
         
         console.log(`Activity state: ${this.activityState}, Time since last activity: ${Math.round((now - this.lastActivityTime) / 1000)}s`);
     }
@@ -3360,10 +3390,13 @@ class DesktopProgressController {
             // Update monitoring status
             this.activityStats.isMonitoring = true;
             
-            // Update the Activity Overview UI
-            this.updateActivityUI();
-            
-            console.log(`📊 Activity Overview: Session time ${this.formatDuration(this.activityStats.sessionTime)}`);
+                    // Update the Activity Overview UI
+        this.updateActivityUI();
+        
+        // Record real activity event for timeline
+        this.recordActivityEvent(data.type, true);
+        
+        console.log(`📊 Activity Overview: Session time ${this.formatDuration(this.activityStats.sessionTime)}`);
         }
     }
 
@@ -3400,6 +3433,424 @@ class DesktopProgressController {
         this.updateActivityUI();
         
         console.log(`📊 Activity Overview: Status changed to ${data.isActive ? 'active' : 'inactive'}, Daily total: ${this.formatDuration(this.activityStats.dailyActive)}`);
+    }
+
+    // Activity Chart Methods
+    initializeActivityChart() {
+        const canvas = document.getElementById('activityChartCanvas');
+        if (!canvas) {
+            console.error('Activity chart canvas not found');
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        // Initialize chart data for the last 24 hours (hourly intervals)
+        const now = new Date();
+        const labels = [];
+        const data = [];
+        
+        // Create labels for the last 24 hours
+        for (let i = 23; i >= 0; i--) {
+            const time = new Date(now.getTime() - (i * 60 * 60 * 1000));
+            labels.push(time.getHours().toString().padStart(2, '0') + ':00');
+            data.push(0); // Initialize with 0 activity
+        }
+        
+        this.activityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Activity Level',
+                    data: data,
+                    borderColor: '#1f6feb',
+                    backgroundColor: 'rgba(31, 111, 235, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#1f6feb',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(13, 17, 23, 0.9)',
+                        titleColor: '#f0f6fc',
+                        bodyColor: '#8b949e',
+                        borderColor: '#30363d',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return `Time: ${tooltipItems[0].label}`;
+                            },
+                            label: function(context) {
+                                const minutes = Math.round(context.parsed.y);
+                                return `Active: ${minutes} minutes`;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time (24h)',
+                            color: '#8b949e',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        ticks: {
+                            color: '#6e7681',
+                            font: {
+                                size: 11
+                            },
+                            maxTicksLimit: 8
+                        },
+                        grid: {
+                            color: 'rgba(48, 54, 61, 0.5)',
+                            drawBorder: false
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Active Minutes',
+                            color: '#8b949e',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        ticks: {
+                            color: '#6e7681',
+                            font: {
+                                size: 11
+                            },
+                            beginAtZero: true,
+                            stepSize: 10
+                        },
+                        grid: {
+                            color: 'rgba(48, 54, 61, 0.5)',
+                            drawBorder: false
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log('📊 Activity chart initialized');
+        
+        // Load any existing activity data for today
+        this.loadTodayActivityData();
+    }
+
+    loadTodayActivityData() {
+        // For now, add some sample data to test the chart
+        // In a real implementation, this would load from stored activity data
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        // Add some sample activity data for the past few hours
+        for (let i = Math.max(0, currentHour - 8); i <= currentHour; i++) {
+            const hourIndex = this.activityChart.data.labels.findIndex(label => {
+                return label === i.toString().padStart(2, '0') + ':00';
+            });
+            
+            if (hourIndex !== -1) {
+                // Add random activity between 0-45 minutes per hour
+                const activityMinutes = Math.floor(Math.random() * 45);
+                this.activityChart.data.datasets[0].data[hourIndex] = activityMinutes;
+            }
+        }
+        
+        this.activityChart.update();
+        console.log('📊 Sample activity data loaded for testing');
+    }
+
+    // Activity Timeline Methods - Now with minute-level granularity using real data
+    initializeActivityTimeline() {
+        const timelineContainer = document.getElementById('activityTimeline');
+        if (!timelineContainer) {
+            console.error('Activity timeline container not found');
+            return;
+        }
+
+        // Clear existing segments
+        timelineContainer.innerHTML = '';
+
+        // Create 144 segments (one for each 10-minute period) to avoid layout issues
+        // This gives us good granularity while keeping the timeline manageable
+        for (let segment = 0; segment < 144; segment++) {
+            const segmentDiv = document.createElement('div');
+            segmentDiv.className = 'timeline-segment no-data';
+            segmentDiv.dataset.segment = segment;
+            segmentDiv.dataset.startMinute = segment * 10;
+            segmentDiv.dataset.endMinute = (segment * 10) + 9;
+            
+            const startMinute = segment * 10;
+            const endMinute = (segment * 10) + 9;
+            
+            // Add hover tooltip
+            segmentDiv.addEventListener('mouseenter', (e) => {
+                this.showTimelineTooltip(e, startMinute, endMinute);
+            });
+            
+            segmentDiv.addEventListener('mouseleave', () => {
+                this.hideTimelineTooltip();
+            });
+            
+            timelineContainer.appendChild(segmentDiv);
+        }
+
+        console.log('📊 Real-time activity timeline initialized with 10-minute precision (144 segments)');
+        
+        // Load real activity data from today
+        this.loadRealTimelineData();
+        
+        // Auto-scroll to current time
+        this.scrollTimelineToCurrentTime();
+    }
+
+    loadRealTimelineData() {
+        // Load any stored activity data from localStorage for today
+        const today = new Date().toDateString();
+        const storedData = localStorage.getItem(`activityTimeline_${today}`);
+        
+        if (storedData) {
+            try {
+                this.realTimelineData = new Map(JSON.parse(storedData));
+                console.log(`📊 Loaded ${this.realTimelineData.size} minutes of real activity data from storage`);
+            } catch (error) {
+                console.error('Error loading timeline data:', error);
+                this.realTimelineData = new Map();
+            }
+        } else {
+            this.realTimelineData = new Map();
+            console.log('📊 No existing timeline data found, starting fresh');
+        }
+        
+        // Apply the loaded data to the timeline
+        this.refreshTimelineDisplay();
+    }
+
+    saveRealTimelineData() {
+        // Save current timeline data to localStorage
+        const today = new Date().toDateString();
+        try {
+            const dataToStore = JSON.stringify([...this.realTimelineData]);
+            localStorage.setItem(`activityTimeline_${today}`, dataToStore);
+        } catch (error) {
+            console.error('Error saving timeline data:', error);
+        }
+    }
+
+    refreshTimelineDisplay() {
+        // Update all timeline segments based on real data
+        for (let segment = 0; segment < 144; segment++) {
+            const segmentDiv = document.querySelector(`[data-segment="${segment}"]`);
+            if (segmentDiv) {
+                const segmentKey = this.getSegmentKey(segment);
+                const state = this.realTimelineData.get(segmentKey) || 'no-data';
+                segmentDiv.className = `timeline-segment ${state}`;
+            }
+        }
+    }
+
+    getSegmentKey(segmentIndex) {
+        // Convert segment index to a key format (segment number)
+        return `segment_${segmentIndex}`;
+    }
+
+    getCurrentSegment() {
+        const now = new Date();
+        const minuteOfDay = now.getHours() * 60 + now.getMinutes();
+        return Math.floor(minuteOfDay / 10); // Each segment is 10 minutes
+    }
+
+    scrollTimelineToCurrentTime() {
+        const timelineContainer = document.getElementById('activityTimeline');
+        if (!timelineContainer) return;
+        
+        const currentSegment = this.getCurrentSegment();
+        const totalSegments = 144;
+        
+        // Calculate scroll position (scroll to show current time in center)
+        const scrollPercentage = currentSegment / totalSegments;
+        const containerWidth = timelineContainer.clientWidth;
+        const totalWidth = timelineContainer.scrollWidth;
+        const scrollPosition = (totalWidth * scrollPercentage) - (containerWidth / 2);
+        
+        timelineContainer.scrollLeft = Math.max(0, scrollPosition);
+        
+        console.log(`📊 Timeline scrolled to current segment: ${currentSegment}`);
+    }
+
+    updateActivityTimeline(activityData) {
+        if (!activityData) return;
+        
+        const currentSegment = this.getCurrentSegment();
+        const segmentKey = this.getSegmentKey(currentSegment);
+        
+        let state = 'no-data';
+        
+        if (activityData.isActive) {
+            state = 'active';
+        } else {
+            // Determine if idle or inactive based on time since last activity
+            const timeSinceActivity = Date.now() - this.lastActivityTime;
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            if (timeSinceActivity < fiveMinutes) {
+                state = 'idle';
+            } else {
+                state = 'inactive';
+            }
+        }
+        
+        // Store the real activity data
+        this.realTimelineData.set(segmentKey, state);
+        
+        // Update the visual segment
+        const segment = document.querySelector(`[data-segment="${currentSegment}"]`);
+        if (segment) {
+            segment.className = `timeline-segment ${state}`;
+        }
+        
+        // Save to localStorage periodically
+        this.saveRealTimelineData();
+        
+        console.log(`📊 Real timeline updated: Segment ${currentSegment} is now ${state}`);
+    }
+
+    // Record activity event with 10-minute segment precision
+    recordActivityEvent(activityType, isActive) {
+        const currentSegment = this.getCurrentSegment();
+        const segmentKey = this.getSegmentKey(currentSegment);
+        
+        let state;
+        if (isActive) {
+            state = 'active';
+        } else {
+            // Check if this is a transition to idle or inactive
+            const timeSinceActivity = Date.now() - this.lastActivityTime;
+            const fiveMinutes = 5 * 60 * 1000;
+            state = timeSinceActivity < fiveMinutes ? 'idle' : 'inactive';
+        }
+        
+        // Store the activity state for this segment
+        this.realTimelineData.set(segmentKey, state);
+        
+        // Update the visual display
+        const segment = document.querySelector(`[data-segment="${currentSegment}"]`);
+        if (segment) {
+            segment.className = `timeline-segment ${state}`;
+        }
+        
+        console.log(`📊 Activity event recorded: ${activityType} at segment ${currentSegment} -> ${state}`);
+        
+        // Save data
+        this.saveRealTimelineData();
+    }
+
+    showTimelineTooltip(event, startMinute, endMinute) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'timeline-tooltip';
+        tooltip.id = 'timelineTooltip';
+        
+        const segment = event.target;
+        const state = segment.className.replace('timeline-segment ', '');
+        
+        // Convert minutes to hour:minute format
+        const startHour = Math.floor(startMinute / 60);
+        const startMin = startMinute % 60;
+        const endHour = Math.floor(endMinute / 60);
+        const endMin = endMinute % 60;
+        
+        const timeString = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')} - ${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+        
+        let stateText;
+        switch (state) {
+            case 'active':
+                stateText = 'Active';
+                break;
+            case 'idle':
+                stateText = 'Idle';
+                break;
+            case 'inactive':
+                stateText = 'Inactive';
+                break;
+            default:
+                stateText = 'No Data';
+        }
+        
+        tooltip.textContent = `${timeString}: ${stateText}`;
+        
+        // Position tooltip
+        const rect = segment.getBoundingClientRect();
+        tooltip.style.position = 'fixed';
+        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+        tooltip.style.top = `${rect.top - 30}px`;
+        tooltip.style.transform = 'translateX(-50%)';
+        
+        document.body.appendChild(tooltip);
+    }
+
+    hideTimelineTooltip() {
+        const tooltip = document.getElementById('timelineTooltip');
+        if (tooltip) {
+            tooltip.remove();
+        }
+    }
+
+    updateActivityChart(activityData) {
+        if (!this.activityChart) {
+            console.log('📊 Chart not initialized yet');
+            return;
+        }
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        // Find the index for the current hour
+        const hourIndex = this.activityChart.data.labels.findIndex(label => {
+            return label === currentHour.toString().padStart(2, '0') + ':00';
+        });
+
+        if (hourIndex !== -1 && activityData.isActive) {
+            // Add activity time to current hour (convert session time from ms to minutes)
+            const sessionMinutes = Math.round(activityData.sessionTime / (1000 * 60));
+            const currentValue = this.activityChart.data.datasets[0].data[hourIndex] || 0;
+            
+            // Update with incremental activity (prevent huge jumps)
+            const increment = Math.min(sessionMinutes - currentValue, 5); // Max 5 minutes increment per update
+            if (increment > 0) {
+                this.activityChart.data.datasets[0].data[hourIndex] = currentValue + increment;
+                this.activityChart.update('none'); // Update without animation for real-time feel
+                
+                console.log(`📊 Chart updated: Hour ${currentHour} now has ${this.activityChart.data.datasets[0].data[hourIndex]} minutes of activity`);
+            }
+        }
     }
 
     updateWeeklyInsights() {

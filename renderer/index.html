@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MCP Progress Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg-primary: #0d1117;
@@ -51,7 +52,7 @@
     /* App Header */
     .app-header {
       background: var(--bg-secondary);
-      padding: 16px 24px 8px 24px;
+      padding: 32px 24px 8px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1648,12 +1649,160 @@
 
     .activity-chart {
       min-height: 200px;
+      height: 200px;
       background: var(--bg-tertiary);
       border: 1px solid var(--border-muted);
       border-radius: var(--radius);
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+    }
+
+    .activity-chart canvas {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: var(--radius);
+    }
+
+    .activity-timeline-container {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+      contain: layout;
+    }
+
+    .activity-timeline-content-overlay {
+      max-width: 100%;
+    }
+
+    .activity-timeline {
+      height: 20px;
+      background: #000000;
+      border-radius: 4px;
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin-bottom: 8px;
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-default) var(--bg-tertiary);
+    }
+
+    .activity-timeline::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .activity-timeline::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+    }
+
+    .activity-timeline::-webkit-scrollbar-thumb {
+      background: var(--border-default);
+      border-radius: 3px;
+    }
+
+    .activity-timeline::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    .timeline-segment {
+      height: 20px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      flex: none;
+      width: 4px;
+      min-width: 4px;
+    }
+
+    .timeline-segment:hover {
+      opacity: 0.8;
+      transform: scaleY(1.1);
+    }
+
+    .timeline-segment.active {
+      background-color: #00d4aa;
+    }
+
+    .timeline-segment.idle {
+      background-color: #fbbf24;
+    }
+
+    .timeline-segment.inactive {
+      background-color: #6e7681;
+    }
+
+    .timeline-segment.no-data {
+      background-color: #000000;
+    }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .timeline-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .legend-color.active {
+      background-color: #00d4aa;
+    }
+
+    .legend-color.idle {
+      background-color: #fbbf24;
+    }
+
+    .legend-color.inactive {
+      background-color: #6e7681;
+    }
+
+    .legend-color.no-data {
+      background-color: #000000;
+    }
+
+    .timeline-tooltip {
+      position: absolute;
+      background: rgba(13, 17, 23, 0.9);
+      color: var(--text-primary);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      border: 1px solid var(--border-default);
     }
 
     .chart-placeholder {
@@ -1820,7 +1969,7 @@
   <div class="app-header">
     <div class="header-left">
     <h1 class="app-title">
-      ⏰ MCP Progress Tracker
+      Progress Tracker
     </h1>
       <div class="current-time-display">
         <div class="current-time" id="currentTime">Loading...</div>
@@ -1915,19 +2064,6 @@
 
     <!-- Progress Tab -->
     <div class="tab-content" id="progressTab">
-      <!-- Status Section -->
-      <div class="status">
-        <div class="toggle-switch">
-          <span class="status-indicator" id="statusIndicator"></span>
-          <span id="statusText">Loading...</span>
-          <div class="switch" style="margin-left: auto;">
-            <input type="checkbox" id="enabledToggle">
-            <span class="slider"></span>
-          </div>
-        </div>
-        <div class="last-report" id="lastReport">No reports submitted yet</div>
-      </div>
-
       <!-- Progress Items Table -->
       <div class="section">
         <h3 style="color: var(--text-primary);">📋 Progress Items</h3>
@@ -2247,9 +2383,47 @@
             </div>
             <div class="activity-chart" id="activityChart">
               <!-- Activity visualization will be rendered here -->
-              <div class="chart-placeholder">
+              <canvas id="activityChartCanvas" width="400" height="200"></canvas>
+              <div class="chart-placeholder" id="chartPlaceholder" style="display: none;">
                 📊 Activity chart will appear here
               </div>
+            </div>
+            
+            <!-- 24-Hour Activity Timeline -->
+            <div class="activity-timeline-container">
+              <div class="activity-timeline-content-overlay">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <h4 style="margin: 0; color: var(--text-primary); font-size: 14px;">24-Hour Activity Timeline</h4>
+                </div>
+                <div class="activity-timeline" id="activityTimeline">
+                  <!-- Timeline segments will be generated here -->
+                </div>
+                <div class="timeline-labels">
+                  <span>00:00</span>
+                  <span>06:00</span>
+                  <span>12:00</span>
+                  <span>18:00</span>
+                  <span>24:00</span>
+                </div>
+                <div class="timeline-legend">
+                  <div class="legend-item">
+                    <span class="legend-color active"></span>
+                    <span>Active</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color idle"></span>
+                    <span>Idle</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color inactive"></span>
+                    <span>Inactive</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-color no-data"></span>
+                    <span>No Data</span>
+                  </div>
+                </div>
+            </div>
             </div>
           </div>
           
