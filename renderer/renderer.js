@@ -5,6 +5,7 @@ class DesktopProgressController {
         this.settings = null;
         this.todos = [];
         this.logs = [];
+        this.progressItems = []; // Store progress items for efficiency calculations
         this.endOfDayShownToday = null;
         this.activityStats = {
             isMonitoring: false,
@@ -1327,7 +1328,8 @@ class DesktopProgressController {
                     <div class="todo-actions">
                         ${todo.completed ? 
                             `<button class="todo-btn undo" onclick="controller.undoTodo('${todo.id}')">Undo</button>` :
-                            `<button class="todo-btn done" onclick="controller.completeTodo('${todo.id}')">Done</button>`
+                            `<button class="todo-btn done" onclick="controller.completeTodo('${todo.id}')">Done</button>
+                             <button class="todo-btn submit-today" onclick="controller.submitTodoToday('${todo.id}')">Submit Today</button>`
                         }
                         <button class="todo-btn delete" onclick="controller.deleteTodo('${todo.id}')">Delete</button>
                     </div>
@@ -1381,6 +1383,67 @@ class DesktopProgressController {
             if (window.electronAPI && window.electronAPI.showNotification) {
                 window.electronAPI.showNotification('Task marked done, but progress submission failed');
             }
+        }
+
+        this.saveTodos();
+        this.updateTodoList();
+    }
+
+    async submitTodoToday(todoId) {
+        const todo = this.todos.find(t => t.id == todoId);
+        if (!todo) return;
+
+        // Update the todo's date to today
+        const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
+        todo.date = today;
+
+        // Mark as completed
+        todo.completed = true;
+        todo.completedAt = new Date().toISOString();
+
+        // Convert to progress report with today's date
+        const cleanDescription = this.removeEmojis(todo.description);
+        const progressData = {
+            project: todo.project,
+            hours: todo.hours,
+            description: cleanDescription,
+            date: today // Use today's date
+        };
+
+        try {
+            if (window.electronAPI && window.electronAPI.submitProgress) {
+                this.addLog(`Submitting todo for today: ${todo.hours}h for ${todo.project} - ${todo.description}`, 'info');
+                const result = await window.electronAPI.submitProgress(progressData);
+                
+                if (result.success) {
+                    this.addLog('Todo submitted for today and added to Airtable successfully', 'success');
+                    if (window.electronAPI && window.electronAPI.showNotification) {
+                        window.electronAPI.showNotification('Task submitted for today and added to progress report!');
+                    }
+                } else {
+                    this.addLog(`Todo submission failed: ${result.error}`, 'error');
+                    if (window.electronAPI && window.electronAPI.showNotification) {
+                        window.electronAPI.showNotification(`Task submission failed: ${result.error}`);
+                    }
+                    // Revert completion status if submission failed
+                    todo.completed = false;
+                    todo.completedAt = null;
+                }
+            } else {
+                this.addLog('Todo marked as done but progress API not available', 'warning');
+                if (window.electronAPI && window.electronAPI.showNotification) {
+                    window.electronAPI.showNotification('Task marked as done (progress API not available)');
+                }
+            }
+        } catch (error) {
+            console.error('Error submitting progress:', error);
+            this.addLog(`Todo submission error: ${error.message}`, 'error');
+            if (window.electronAPI && window.electronAPI.showNotification) {
+                window.electronAPI.showNotification('Task submission failed');
+            }
+            // Revert completion status if submission failed
+            todo.completed = false;
+            todo.completedAt = null;
         }
 
         this.saveTodos();
@@ -1545,6 +1608,9 @@ class DesktopProgressController {
             if (window.electronAPI && window.electronAPI.getProgressItems) {
                 const items = await window.electronAPI.getProgressItems();
                 
+                // Store progress items for efficiency calculations
+                this.progressItems = items || [];
+                
                 if (items && items.length > 0) {
                     this.displayProgressItems(items);
                     this.showStatus('progressStatus', `Loaded ${items.length} progress items`, 'success');
@@ -1553,23 +1619,24 @@ class DesktopProgressController {
                     this.displayProgressItems([]);
                     this.showStatus('progressStatus', 'No progress items found', 'info');
                     setTimeout(() => this.clearStatus('progressStatus'), 3000);
-                } else {
-                    // Server might not be running
-                    const tbody = document.getElementById('progressTableBody');
-                    if (tbody) {
-                        tbody.innerHTML = `
-                            <tr class="error-state">
-                                <td colspan="5" class="error-state">
-                                    ⚠️ Unable to load progress items. Please check if the server is running.
-                                    <br><small>Check the server status indicator in the header.</small>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                    this.showStatus('progressStatus', 'Server not responding - check server status', 'error');
                 }
+                
+                // Update efficiency calculations with new progress data
+                this.updateActivityUI();
             } else {
-                this.showStatus('progressStatus', 'Progress API not available', 'error');
+                // Server might not be running
+                const tbody = document.getElementById('progressTableBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr class="error-state">
+                            <td colspan="5" class="error-state">
+                                ⚠️ Unable to load progress items. Please check if the server is running.
+                                <br><small>Check the server status indicator in the header.</small>
+                            </td>
+                        </tr>
+                    `;
+                }
+                this.showStatus('progressStatus', 'Server not responding - check server status', 'error');
             }
         } catch (error) {
             console.error('Failed to load progress items:', error);
@@ -2913,8 +2980,20 @@ class DesktopProgressController {
     }
 
     getProgressItemsForDate(date) {
-        // This would need to access progress items - for now return empty array
-        return [];
+        if (!this.progressItems || !Array.isArray(this.progressItems)) {
+            return [];
+        }
+        
+        return this.progressItems.filter(item => {
+            if (!item.date) return false;
+            
+            // Handle different date formats
+            const itemDate = new Date(item.date);
+            const targetDate = new Date(date);
+            
+            // Compare dates (ignore time component)
+            return itemDate.toDateString() === targetDate.toDateString();
+        });
     }
 
     async refreshActivityStats() {

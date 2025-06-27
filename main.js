@@ -1,9 +1,9 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain, dialog, Notification } from 'electron';
+import { app, BrowserWindow, Tray, Menu, ipcMain, Notification } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { startEmbeddedServer, stopEmbeddedServer, isServerHealthy } from './embedded-http-server.js';
+import { startEmbeddedServer, stopEmbeddedServer } from './embedded-http-server.js';
 import { HybridActivityMonitor } from './activity-monitor.js';
 
 // ES module equivalent of __dirname
@@ -42,7 +42,7 @@ let activityMonitor = {
 let nativeActivityMonitor = null;
 
 // Settings management
-const settingsPath = path.join(__dirname, 'settings.json');
+const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 let settings = {};
 
 function loadSettings() {
@@ -655,7 +655,7 @@ function resetDailyStats() {
 }
 
 function saveActivityStats() {
-  const statsPath = path.join(__dirname, 'activity-stats.json');
+  const statsPath = path.join(app.getPath('userData'), 'activity-stats.json');
   try {
     const stats = {
       dailyStats: activityMonitor.dailyStats,
@@ -668,7 +668,7 @@ function saveActivityStats() {
 }
 
 function loadActivityStats() {
-  const statsPath = path.join(__dirname, 'activity-stats.json');
+  const statsPath = path.join(app.getPath('userData'), 'activity-stats.json');
   try {
     if (fs.existsSync(statsPath)) {
       const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
